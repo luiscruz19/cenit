@@ -1,0 +1,8 @@
+node_modules/
+.next/
+.env
+.env.local
+.env.deploy.test
+.env.deploy.prod
+*.log
+.DS_Store

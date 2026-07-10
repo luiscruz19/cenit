@@ -1,0 +1,68 @@
+# Cenit — dashboard GA4 + Search Console. Usa la infra compartida de /opt/shared
+# (Traefik + mysql_db + net-shared). Requisitos: /opt/shared levantado.
+#   make up   (crea .env, asegura la DB y levanta los servicios)
+# Acceso (vía Traefik):
+#   - Dashboard: http://cenit.localhost  (también http://localhost:4100 — necesario
+#     para el redirect de Google OAuth, que exige localhost o HTTPS)
+#   - API:       http://cenit-api.localhost
+name: cenit
+
+services:
+  cenit_api:
+    build:
+      context: ./api
+      dockerfile: Dockerfile.development
+    container_name: cenit_api
+    restart: always
+    env_file: ./api/.env
+    environment:
+      - NODE_ENV=development
+      - TZ=America/Argentina/Buenos_Aires
+    volumes:
+      - ./api:/usr/src/cenit-api
+      - /usr/src/cenit-api/node_modules
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=net-shared"
+      - "traefik.http.routers.cenit_api.rule=Host(`cenit-api.localhost`)"
+      - "traefik.http.routers.cenit_api.priority=10"
+      - "traefik.http.services.cenit_api.loadbalancer.server.port=80"
+    networks:
+      - net-shared
+
+  cenit_web:
+    build:
+      context: ./web
+      dockerfile: Dockerfile.development
+    container_name: cenit_web
+    restart: always
+    environment:
+      # El Next habla server-side con la api por hostname de net-shared (no se expone al browser).
+      API_URL: http://cenit_api
+      # Base pública para los redirects del BFF (req.url pierde el puerto del host).
+      WEB_URL: http://localhost:4100
+      NODE_ENV: development
+      PORT: "80"
+      TZ: America/Argentina/Buenos_Aires
+    ports:
+      # Google OAuth solo acepta http en localhost: el redirect URI de dev es
+      # http://localhost:4100/api/auth/callback → este mapeo.
+      - "4100:80"
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=net-shared"
+      - "traefik.http.routers.cenit_web.rule=Host(`cenit.localhost`)"
+      - "traefik.http.routers.cenit_web.priority=10"
+      - "traefik.http.services.cenit_web.loadbalancer.server.port=80"
+    depends_on:
+      - cenit_api
+    volumes:
+      - ./web:/usr/src/cenit-web
+      - /usr/src/cenit-web/node_modules
+      - /usr/src/cenit-web/.next
+    networks:
+      - net-shared
+
+networks:
+  net-shared:
+    external: true

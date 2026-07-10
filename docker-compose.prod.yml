@@ -1,0 +1,55 @@
+# ════════════════════════════════════════════════════════════════════════════
+#  CENIT · PROD (test server) — build+push + runtime.
+#  - `deploy.sh test` lo usa para BUILD + PUSH de las imágenes a GHCR.
+#  - En el server se usa el mismo archivo para PULL + UP (el bloque build: es inerte).
+#  Infra compartida (Traefik, mysql_db) provista por /opt/shared en la red externa
+#  net-shared. Ruteo: todo bajo cenit.sda.ovh → web (Next). La api queda interna:
+#  el BFF del web proxea server-side y el callback de OAuth entra por el web
+#  (https://cenit.sda.ovh/api/auth/callback).
+#  Variables runtime en .env (no versionado).
+# ════════════════════════════════════════════════════════════════════════════
+services:
+  cenit_api:
+    build:
+      context: ./api
+      dockerfile: Dockerfile.production
+    image: ghcr.io/luiscruz19/cenit-api:${TAG:-TEST}
+    container_name: cenit_api
+    restart: unless-stopped
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      NODE_ENV: production
+    networks:
+      - net-shared
+
+  cenit_web:
+    build:
+      context: ./web
+      dockerfile: Dockerfile.production
+    image: ghcr.io/luiscruz19/cenit-web:${TAG:-TEST}
+    container_name: cenit_web
+    restart: unless-stopped
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      NODE_ENV: production
+      PORT: "80"
+      API_URL: http://cenit_api
+      WEB_URL: https://cenit.sda.ovh
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=net-shared"
+      - "traefik.http.routers.cenit_web.rule=Host(`cenit.sda.ovh`)"
+      - "traefik.http.routers.cenit_web.priority=20"
+      - "traefik.http.services.cenit_web.loadbalancer.server.port=80"
+    depends_on:
+      - cenit_api
+    networks:
+      - net-shared
+
+networks:
+  net-shared:
+    external: true

@@ -1,0 +1,28 @@
+{
+    "name": "cenit-api",
+    "version": "1.0.0",
+    "description": "API del dashboard de métricas GA4 + Search Console multi-sitio",
+    "type": "module",
+    "main": "index.js",
+    "scripts": {
+        "dev": "nodemon -L index.js",
+        "start": "node index.js",
+        "seed": "node db/seed.js"
+    },
+    "dependencies": {
+        "body-parser": "^1.20.2",
+        "cors": "^2.8.5",
+        "dotenv": "^16.4.5",
+        "express": "^4.19.2",
+        "express-validator": "^7.1.0",
+        "google-auth-library": "^9.14.1",
+        "googleapis": "^144.0.0",
+        "jsonwebtoken": "^9.0.2",
+        "mysql2": "^3.11.0",
+        "node-cron": "^3.0.3",
+        "sequelize": "^6.37.3"
+    },
+    "devDependencies": {
+        "nodemon": "^3.1.2"
+    }
+}
