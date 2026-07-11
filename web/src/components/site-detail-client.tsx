@@ -11,6 +11,7 @@ import {
 } from '@/lib/format';
 import { PeriodSelector } from '@/components/period-selector';
 import { KpiStat } from '@/components/kpi-stat';
+import { SiteHealthCard, SiteActionPlan } from '@/components/site-insights';
 import { TimeSeriesChart } from '@/components/charts/time-series-chart';
 import { MonthlyTrendChart } from '@/components/charts/monthly-trend-chart';
 import { ChannelBarChart } from '@/components/charts/channel-bar-chart';
@@ -76,19 +77,21 @@ export function SiteDetailClient({ siteId }: { siteId: string }) {
             ) : (
                 <>
                     <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
-                        <KpiStat label="Sesiones" value={formatCompact(kpis.ga?.sessions)}
+                        <KpiStat label="Sesiones" value={formatCompact(kpis.ga?.sessions)} term="sesiones"
                             current={kpis.ga?.sessions} previous={kpis.gaPrev?.sessions} yoy={kpis.gaYoy?.sessions} />
-                        <KpiStat label="Usuarios" value={formatCompact(kpis.ga?.users)}
+                        <KpiStat label="Usuarios" value={formatCompact(kpis.ga?.users)} term="usuarios"
                             current={kpis.ga?.users} previous={kpis.gaPrev?.users} yoy={kpis.gaYoy?.users} />
-                        <KpiStat label="Interacción" value={formatPct(kpis.ga?.engagementRate)}
+                        <KpiStat label="Interacción" value={formatPct(kpis.ga?.engagementRate)} term="engagement-rate"
                             current={kpis.ga?.engagementRate} previous={kpis.gaPrev?.engagementRate} />
                         <KpiStat label="Duración media" value={formatDuration(kpis.ga?.avgSessionDuration)}
                             current={kpis.ga?.avgSessionDuration} previous={kpis.gaPrev?.avgSessionDuration} />
-                        <KpiStat label="Clicks" value={formatCompact(kpis.gsc?.clicks)}
+                        <KpiStat label="Clicks" value={formatCompact(kpis.gsc?.clicks)} term="clicks"
                             current={kpis.gsc?.clicks} previous={kpis.gscPrev?.clicks} yoy={kpis.gscYoy?.clicks} />
-                        <KpiStat label="Posición media" value={formatPosition(kpis.gsc?.position)}
+                        <KpiStat label="Posición media" value={formatPosition(kpis.gsc?.position)} term="posicion"
                             current={kpis.gsc?.position} previous={kpis.gscPrev?.position} invert />
                     </div>
+
+                    <SiteHealthCard siteId={siteId} />
 
                     <Card>
                         <CardHeader className="pb-2">
@@ -241,6 +244,8 @@ export function SiteDetailClient({ siteId }: { siteId: string }) {
                         </CardHeader>
                         <CardContent />
                     </Card>
+
+                    <SiteActionPlan siteId={siteId} />
 
                     {(!site?.mapped?.ga4 || !site?.mapped?.gsc) && (
                         <p className="text-sm text-muted-foreground">
