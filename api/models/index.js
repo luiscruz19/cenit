@@ -6,6 +6,7 @@ import GaDailyMetric from './GaDailyMetric.js';
 import GaDailyChannel from './GaDailyChannel.js';
 import GaDailyPage from './GaDailyPage.js';
 import GaDailyDevice from './GaDailyDevice.js';
+import GaDailyCountry from './GaDailyCountry.js';
 import GscDailyTotal from './GscDailyTotal.js';
 import GscDailyQuery from './GscDailyQuery.js';
 import GscDailyPage from './GscDailyPage.js';
@@ -28,6 +29,7 @@ const metricModels = [
     [GaDailyChannel, 'gaDailyChannels'],
     [GaDailyPage, 'gaDailyPages'],
     [GaDailyDevice, 'gaDailyDevices'],
+    [GaDailyCountry, 'gaDailyCountries'],
     [GscDailyTotal, 'gscDailyTotals'],
     [GscDailyQuery, 'gscDailyQueries'],
     [GscDailyPage, 'gscDailyPages'],
@@ -63,6 +65,7 @@ export {
     GaDailyChannel,
     GaDailyPage,
     GaDailyDevice,
+    GaDailyCountry,
     GscDailyTotal,
     GscDailyQuery,
     GscDailyPage,
@@ -83,6 +86,7 @@ export default {
     GaDailyChannel,
     GaDailyPage,
     GaDailyDevice,
+    GaDailyCountry,
     GscDailyTotal,
     GscDailyQuery,
     GscDailyPage,

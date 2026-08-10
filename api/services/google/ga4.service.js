@@ -78,6 +78,14 @@ const REPORT_DEFS = ({ from, to, topN, singleDay }) => [
         metrics: [{ name: 'sessions' }, { name: 'totalUsers' }],
         limit: '100000',
     },
+    {
+        // 5 reportes es el máximo de batchRunReports: geografía entra justo en la misma llamada.
+        key: 'countries',
+        dimensions: [{ name: 'date' }, { name: 'country' }],
+        metrics: [{ name: 'sessions' }, { name: 'totalUsers' }],
+        limit: singleDay ? String(topN) : '100000',
+        orderBys: [{ metric: { metricName: 'sessions' }, desc: true }],
+    },
 ].map(({ key, ...report }) => ({
     key,
     report: { ...report, dateRanges: [{ startDate: from, endDate: to }] },
@@ -108,16 +116,21 @@ export const runReports = async (authClient, propertyId, { from, to, topN }) => 
         });
     });
 
-    // Recorte a top N por fecha para pages (solo hace falta en rangos multi-día).
-    if (from !== to && parsed.pages) {
+    // Recorte a top N por fecha para pages y countries (solo hace falta en rangos multi-día;
+    // la API no soporta "top N por fecha", así que se pide de más y se recorta acá).
+    const trimByDate = (rows) => {
         const byDate = new Map();
-        for (const row of parsed.pages) {
+        for (const row of rows) {
             if (!byDate.has(row.date)) byDate.set(row.date, []);
             byDate.get(row.date).push(row);
         }
-        parsed.pages = [...byDate.values()].flatMap((rows) =>
-            rows.sort((a, b) => b.mets[0] - a.mets[0]).slice(0, topN)
+        return [...byDate.values()].flatMap((r) =>
+            r.sort((a, b) => b.mets[0] - a.mets[0]).slice(0, topN)
         );
+    };
+    if (from !== to) {
+        if (parsed.pages) parsed.pages = trimByDate(parsed.pages);
+        if (parsed.countries) parsed.countries = trimByDate(parsed.countries);
     }
 
     return parsed;

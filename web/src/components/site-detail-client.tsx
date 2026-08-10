@@ -14,7 +14,10 @@ import { KpiStat } from '@/components/kpi-stat';
 import { SiteHealthCard, SiteActionPlan } from '@/components/site-insights';
 import { SiteMeta } from '@/components/site-meta';
 import { SiteClarity } from '@/components/site-clarity';
+import { SiteSummary } from '@/components/site-summary';
+import { SiteGeography } from '@/components/site-geography';
 import { SiteRankings } from '@/components/site-rankings';
+import { ErrorState } from '@/components/ui/states';
 import { SiteAlerts } from '@/components/site-alerts';
 import { TimeSeriesChart } from '@/components/charts/time-series-chart';
 import { MonthlyTrendChart } from '@/components/charts/monthly-trend-chart';
@@ -42,15 +45,11 @@ function Section({ title, hint }: { title: string; hint?: string }) {
 
 export function SiteDetailClient({ siteId }: { siteId: string }) {
     const period = parsePeriod(useSearchParams().get('period'));
-    const { data, isLoading, error } = useSWR(`/metrics/sites/${siteId}?period=${period}`, fetcher);
+    const { data, isLoading, error, mutate } = useSWR(`/metrics/sites/${siteId}?period=${period}`, fetcher);
     const { data: monthlyData } = useSWR(`/insights/monthly/${siteId}`, fetcher);
 
     if (error) {
-        return (
-            <p className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
-                {String((error as Error).message)}
-            </p>
-        );
+        return <ErrorState message={(error as Error).message} onRetry={() => mutate()} />;
     }
 
     const site = data?.site;
@@ -112,6 +111,8 @@ export function SiteDetailClient({ siteId }: { siteId: string }) {
                 </>
             ) : (
                 <>
+                    <SiteSummary data={data} />
+
                     {/* ── Tráfico (GA4) ──────────────────────────────────── */}
                     <Section title="Tráfico" hint="Google Analytics 4" />
                     <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -198,7 +199,7 @@ export function SiteDetailClient({ siteId }: { siteId: string }) {
                         </Card>
                     )}
 
-                    <div className="grid gap-4 lg:grid-cols-2">
+                    <div className="grid gap-4 lg:grid-cols-3">
                         <Card>
                             <CardHeader className="pb-2">
                                 <CardTitle className="text-base">Canales de tráfico
@@ -221,6 +222,7 @@ export function SiteDetailClient({ siteId }: { siteId: string }) {
                                     : <p className="text-sm text-muted-foreground">Sin datos de dispositivos en el período.</p>}
                             </CardContent>
                         </Card>
+                        <SiteGeography countries={data.countries || []} />
                     </div>
 
                     {/* ── Posicionamiento ────────────────────────────────── */}

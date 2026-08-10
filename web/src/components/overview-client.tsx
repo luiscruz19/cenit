@@ -10,6 +10,8 @@ import { NewSiteDialog } from '@/components/new-site-dialog';
 import { KpiStat } from '@/components/kpi-stat';
 import { SitesTable, type OverviewSite } from '@/components/sites-table';
 import { Skeleton } from '@/components/ui/skeleton';
+import { EmptyState, ErrorState } from '@/components/ui/states';
+import { LayoutGrid } from 'lucide-react';
 
 const sum = (sites: OverviewSite[], pick: (s: OverviewSite) => number | undefined | null) =>
     sites.reduce((acc, s) => acc + (pick(s) || 0), 0);
@@ -53,20 +55,28 @@ export function OverviewClient() {
                 </div>
             </div>
 
-            {error && (
-                <p className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
-                    {String((error as Error).message)}
-                </p>
-            )}
+            {error && <ErrorState message={(error as Error).message} onRetry={() => mutate()} />}
 
-            {isLoading ? (
+            {isLoading && (
                 <>
                     <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
                         {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-[86px]" />)}
                     </div>
                     <Skeleton className="h-96" />
                 </>
-            ) : (
+            )}
+
+            {/* Primeros pasos: sin sitios cargados, el overview hace de onboarding. */}
+            {!isLoading && !error && sites.length === 0 && (
+                <EmptyState
+                    icon={LayoutGrid}
+                    title="Todavía no hay sitios para mostrar"
+                    description="Agregá el primer sitio con su dominio y su propiedad de Google Analytics y Search Console. En cuanto el ETL traiga datos, vas a ver acá el resumen de todo el portfolio."
+                    action={<NewSiteDialog onCreated={() => mutate()} />}
+                />
+            )}
+
+            {!isLoading && !error && sites.length > 0 && (
                 <>
                     <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
                         <KpiStat label="Sesiones (GA4)" value={formatCompact(totals.sessions)} term="sesiones"

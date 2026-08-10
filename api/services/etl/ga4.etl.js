@@ -3,6 +3,7 @@ import GaDailyMetric from '../../models/GaDailyMetric.js';
 import GaDailyChannel from '../../models/GaDailyChannel.js';
 import GaDailyPage from '../../models/GaDailyPage.js';
 import GaDailyDevice from '../../models/GaDailyDevice.js';
+import GaDailyCountry from '../../models/GaDailyCountry.js';
 
 /**
  * ETL GA4 de un sitio para un rango [from, to]. Upserts sobre los índices únicos
@@ -73,6 +74,20 @@ export const runGa4ForSite = async (authClient, site, { from, to, topN }) => {
             updateOnDuplicate: ['sessions', 'total_users', 'updatedAt'],
         });
         rows += devices.length;
+    }
+
+    const countries = (parsed.countries || []).map(({ date, dims, mets }) => ({
+        site_id: site.id,
+        date,
+        country: (dims[0] || '(not set)').slice(0, 80),
+        sessions: mets[0],
+        total_users: mets[1],
+    }));
+    if (countries.length) {
+        await GaDailyCountry.bulkCreate(countries, {
+            updateOnDuplicate: ['sessions', 'total_users', 'updatedAt'],
+        });
+        rows += countries.length;
     }
 
     return { rows, apiCalls: 1 };

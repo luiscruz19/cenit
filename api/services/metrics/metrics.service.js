@@ -157,7 +157,7 @@ export const getSiteDetail = async (siteId, period) => {
         gaCur, gaPrev, gaYoy, gscCur, gscPrev, gscYoy,
         gaSeries, gscSeries,
         channelsCur, channelsPrev, devices,
-        gaPages, gscQueries, gscPages,
+        gaPages, gscQueries, gscPages, countries,
     ] = await Promise.all([
         select(gaSql, { ...base, from, to }),
         select(gaSql, { ...base, from: prevFrom, to: prevTo }),
@@ -213,6 +213,12 @@ export const getSiteDetail = async (siteId, period) => {
              GROUP BY page ORDER BY clicks DESC, impressions DESC LIMIT 20`,
             { ...base, from, to }
         ),
+        select(
+            `SELECT country, SUM(sessions) AS sessions
+             FROM ga_daily_countries WHERE site_id = :siteId AND date BETWEEN :from AND :to
+             GROUP BY country ORDER BY sessions DESC LIMIT 12`,
+            { ...base, from, to }
+        ),
     ]);
 
     // Merge de series GA4 + GSC por fecha (GSC puede no tener los últimos días).
@@ -258,6 +264,7 @@ export const getSiteDetail = async (siteId, period) => {
             prevSessions: prevChannels.get(r.channel) ?? 0,
         })),
         devices: devices.map((r) => ({ device: r.device_category, sessions: num(r.sessions) })),
+        countries: countries.map((r) => ({ country: r.country, sessions: num(r.sessions) })),
         gaPages: gaPages.map((r) => ({
             path: r.page_path, pageViews: num(r.page_views), sessions: num(r.sessions),
         })),

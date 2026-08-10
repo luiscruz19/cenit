@@ -127,6 +127,19 @@ export const DATASETS = {
             users: { label: 'Usuarios', sql: 'SUM(t.total_users)', type: 'int' },
         },
     },
+    countries: {
+        label: 'Países (GA4)',
+        table: 'ga_daily_countries',
+        dimensions: {
+            site: SITE_DIM,
+            date: DATE_DIM,
+            country: { label: 'País', sql: 't.country', groupBy: 't.country', type: 'text' },
+        },
+        metrics: {
+            sessions: { label: 'Sesiones', sql: 'SUM(t.sessions)', type: 'int' },
+            users: { label: 'Usuarios', sql: 'SUM(t.total_users)', type: 'int' },
+        },
+    },
 };
 
 /** Catálogo que consume el frontend para armar los selectores. */
