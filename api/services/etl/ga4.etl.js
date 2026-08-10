@@ -6,6 +6,7 @@ import GaDailyDevice from '../../models/GaDailyDevice.js';
 import GaDailyCountry from '../../models/GaDailyCountry.js';
 import GaDailyEvent from '../../models/GaDailyEvent.js';
 import GaDailyLanding from '../../models/GaDailyLanding.js';
+import GaDailyHour from '../../models/GaDailyHour.js';
 
 /**
  * ETL GA4 de un sitio para un rango [from, to]. Upserts sobre los índices únicos
@@ -119,6 +120,19 @@ export const runGa4ForSite = async (authClient, site, { from, to, topN }) => {
             updateOnDuplicate: ['sessions', 'key_events', 'updatedAt'],
         });
         rows += landings.length;
+    }
+
+    const hours = (parsed.hours || []).map(({ date, dims, mets }) => ({
+        site_id: site.id,
+        date,
+        hour: Math.max(0, Math.min(23, parseInt(dims[0], 10) || 0)),
+        sessions: mets[0],
+    }));
+    if (hours.length) {
+        await GaDailyHour.bulkCreate(hours, {
+            updateOnDuplicate: ['sessions', 'updatedAt'],
+        });
+        rows += hours.length;
     }
 
     return { rows, apiCalls: 2 };

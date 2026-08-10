@@ -10,6 +10,9 @@ import GaDailyCountry from './GaDailyCountry.js';
 import GaDailyEvent from './GaDailyEvent.js';
 import GaDailyLanding from './GaDailyLanding.js';
 import SitePerformance from './SitePerformance.js';
+import GscDailyCountry from './GscDailyCountry.js';
+import GscDailyDevice from './GscDailyDevice.js';
+import GaDailyHour from './GaDailyHour.js';
 import GscDailyTotal from './GscDailyTotal.js';
 import GscDailyQuery from './GscDailyQuery.js';
 import GscDailyPage from './GscDailyPage.js';
@@ -38,6 +41,9 @@ const metricModels = [
     [GscDailyTotal, 'gscDailyTotals'],
     [GscDailyQuery, 'gscDailyQueries'],
     [GscDailyPage, 'gscDailyPages'],
+    [GscDailyCountry, 'gscDailyCountries'],
+    [GscDailyDevice, 'gscDailyDevices'],
+    [GaDailyHour, 'gaDailyHours'],
 ];
 
 for (const [Model, as] of metricModels) {
@@ -87,6 +93,9 @@ export {
     Dashboard,
     ClarityDailyMetric,
     SitePerformance,
+    GscDailyCountry,
+    GscDailyDevice,
+    GaDailyHour,
 };
 
 export default {
@@ -111,4 +120,7 @@ export default {
     Dashboard,
     ClarityDailyMetric,
     SitePerformance,
+    GscDailyCountry,
+    GscDailyDevice,
+    GaDailyHour,
 };

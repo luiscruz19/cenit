@@ -115,6 +115,13 @@ const REPORT_DEFS_2 = ({ from, to, topN, singleDay }) => [
         limit: singleDay ? String(topN) : '100000',
         orderBys: [{ metric: { metricName: 'sessions' }, desc: true }],
     },
+    {
+        // Sesiones por hora del día: para el mapa de "cuándo entra la gente".
+        key: 'hours',
+        dimensions: [{ name: 'date' }, { name: 'hour' }],
+        metrics: [{ name: 'sessions' }],
+        limit: '100000',
+    },
 ].map(({ key, ...report }) => ({
     key,
     report: { ...report, dateRanges: [{ startDate: from, endDate: to }] },

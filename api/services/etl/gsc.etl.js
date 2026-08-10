@@ -2,6 +2,8 @@ import { query } from '../google/gsc.service.js';
 import GscDailyTotal from '../../models/GscDailyTotal.js';
 import GscDailyQuery from '../../models/GscDailyQuery.js';
 import GscDailyPage from '../../models/GscDailyPage.js';
+import GscDailyCountry from '../../models/GscDailyCountry.js';
+import GscDailyDevice from '../../models/GscDailyDevice.js';
 
 const round2 = (n) => Math.round((Number(n) || 0) * 100) / 100;
 
@@ -80,5 +82,34 @@ export const runGscForSite = async (authClient, site, { from, to, topN }) => {
         }
     }
 
-    return { rows, apiCalls: 3 };
+    // 4 y 5) País y dispositivo por día. Son pocos valores (no hace falta recortar top N).
+    for (const { dimension, Model, field, maxLen } of [
+        { dimension: 'country', Model: GscDailyCountry, field: 'country', maxLen: 10 },
+        { dimension: 'device', Model: GscDailyDevice, field: 'device', maxLen: 20 },
+    ]) {
+        const dimRows = singleDay
+            ? (await query(authClient, siteUrl, {
+                from, to, dimensions: [dimension], rowLimit: 1000,
+            })).map((r) => ({ ...r, keys: [from, r.keys[0]] }))
+            : await query(authClient, siteUrl, {
+                from, to, dimensions: ['date', dimension], rowLimit: 25000,
+            });
+
+        const records = dimRows.map((r) => ({
+            site_id: site.id,
+            date: r.keys[0],
+            [field]: (r.keys[1] || '').slice(0, maxLen),
+            clicks: r.clicks || 0,
+            impressions: r.impressions || 0,
+            position: round2(r.position),
+        }));
+        if (records.length) {
+            await Model.bulkCreate(records, {
+                updateOnDuplicate: ['clicks', 'impressions', 'position', 'updatedAt'],
+            });
+            rows += records.length;
+        }
+    }
+
+    return { rows, apiCalls: 5 };
 };

@@ -17,6 +17,8 @@ import { SiteClarity } from '@/components/site-clarity';
 import { SitePerformance } from '@/components/site-performance';
 import { SiteSummary } from '@/components/site-summary';
 import { SiteGeography } from '@/components/site-geography';
+import { SiteHours } from '@/components/site-hours';
+import { SiteSearchBreakdown } from '@/components/site-search-breakdown';
 import { SiteConversionsGuide } from '@/components/site-conversions-guide';
 import { SiteRankings } from '@/components/site-rankings';
 import { ErrorState } from '@/components/ui/states';
@@ -155,6 +157,7 @@ export function SiteDetailClient({ siteId }: { siteId: string }) {
                         <KpiStat label="Posición media" value={formatPosition(kpis.gsc?.position)} term="posicion"
                             current={kpis.gsc?.position} previous={kpis.gscPrev?.position} invert />
                     </div>
+                    <SiteSearchBreakdown countries={data.gscCountries || []} devices={data.gscDevices || []} />
 
                     {/* ── Diagnóstico ────────────────────────────────────── */}
                     <Section title="Diagnóstico" />
@@ -236,6 +239,8 @@ export function SiteDetailClient({ siteId }: { siteId: string }) {
                         </Card>
                         <SiteGeography countries={data.countries || []} />
                     </div>
+
+                    <SiteHours hours={data.hours || []} />
 
                     {/* ── Posicionamiento ────────────────────────────────── */}
                     <Section title="Posicionamiento" />

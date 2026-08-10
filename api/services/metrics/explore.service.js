@@ -88,6 +88,38 @@ export const DATASETS = {
         },
         metrics: GSC_METRICS,
     },
+    gscCountries: {
+        label: 'Búsqueda por país (GSC)',
+        table: 'gsc_daily_countries',
+        dimensions: {
+            site: SITE_DIM,
+            date: DATE_DIM,
+            country: { label: 'País', sql: 't.country', groupBy: 't.country', type: 'text' },
+        },
+        metrics: GSC_METRICS,
+    },
+    gscDevices: {
+        label: 'Búsqueda por dispositivo (GSC)',
+        table: 'gsc_daily_devices',
+        dimensions: {
+            site: SITE_DIM,
+            date: DATE_DIM,
+            device: { label: 'Dispositivo', sql: 't.device', groupBy: 't.device', type: 'text' },
+        },
+        metrics: GSC_METRICS,
+    },
+    hours: {
+        label: 'Por hora (GA4)',
+        table: 'ga_daily_hours',
+        dimensions: {
+            site: SITE_DIM,
+            date: DATE_DIM,
+            hour: { label: 'Hora', sql: 't.hour', groupBy: 't.hour', type: 'int' },
+        },
+        metrics: {
+            sessions: { label: 'Sesiones', sql: 'SUM(t.sessions)', type: 'int' },
+        },
+    },
     gaPages: {
         label: 'Páginas (GA4)',
         table: 'ga_daily_pages',

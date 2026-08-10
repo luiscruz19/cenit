@@ -158,6 +158,7 @@ export const getSiteDetail = async (siteId, period) => {
         gaSeries, gscSeries,
         channelsCur, channelsPrev, devices,
         gaPages, gscQueries, gscPages, countries, events, landings,
+        gscCountries, gscDevices, hours,
     ] = await Promise.all([
         select(gaSql, { ...base, from, to }),
         select(gaSql, { ...base, from: prevFrom, to: prevTo }),
@@ -232,6 +233,27 @@ export const getSiteDetail = async (siteId, period) => {
              GROUP BY landing_page ORDER BY sessions DESC LIMIT 20`,
             { ...base, from, to }
         ),
+        select(
+            `SELECT country, SUM(clicks) AS clicks, SUM(impressions) AS impressions,
+                    SUM(position * impressions) / NULLIF(SUM(impressions), 0) AS position
+             FROM gsc_daily_countries WHERE site_id = :siteId AND date BETWEEN :from AND :to
+             GROUP BY country ORDER BY clicks DESC LIMIT 10`,
+            { ...base, from, to }
+        ),
+        select(
+            `SELECT device, SUM(clicks) AS clicks, SUM(impressions) AS impressions,
+                    SUM(position * impressions) / NULLIF(SUM(impressions), 0) AS position
+             FROM gsc_daily_devices WHERE site_id = :siteId AND date BETWEEN :from AND :to
+             GROUP BY device ORDER BY clicks DESC`,
+            { ...base, from, to }
+        ),
+        select(
+            // Mapa día de semana × hora: DAYOFWEEK 1=domingo … 7=sábado → 0..6.
+            `SELECT (DAYOFWEEK(date) - 1) AS dow, hour, SUM(sessions) AS sessions
+             FROM ga_daily_hours WHERE site_id = :siteId AND date BETWEEN :from AND :to
+             GROUP BY dow, hour`,
+            { ...base, from, to }
+        ),
     ]);
 
     // Merge de series GA4 + GSC por fecha (GSC puede no tener los últimos días).
@@ -279,6 +301,13 @@ export const getSiteDetail = async (siteId, period) => {
         })),
         devices: devices.map((r) => ({ device: r.device_category, sessions: num(r.sessions) })),
         countries: countries.map((r) => ({ country: r.country, sessions: num(r.sessions) })),
+        gscCountries: gscCountries.map((r) => ({
+            country: r.country, clicks: num(r.clicks), impressions: num(r.impressions), position: num(r.position),
+        })),
+        gscDevices: gscDevices.map((r) => ({
+            device: r.device, clicks: num(r.clicks), impressions: num(r.impressions), position: num(r.position),
+        })),
+        hours: hours.map((r) => ({ dow: num(r.dow), hour: num(r.hour), sessions: num(r.sessions) })),
         events: events.map((r) => ({ event: r.event_name, keyEvents: num(r.key_events) })),
         landings: landings.map((r) => ({
             path: r.landing_page, sessions: num(r.sessions), keyEvents: num(r.key_events),
