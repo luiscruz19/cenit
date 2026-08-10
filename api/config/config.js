@@ -57,6 +57,13 @@ const CONFIG = {
         // Cada hora en punto: el job revisa qué reportes caen en esta hora.
         CRON: process.env.REPORTS_CRON || '0 * * * *',
     },
+    PERF: {
+        // PageSpeed diario, en su propia hora (es lento).
+        CRON: process.env.PERF_CRON || '15 6 * * *',
+    },
+    // API key de PageSpeed Insights (opcional pero recomendada para correr los 21 sitios
+    // sin toparse con el límite anónimo). Si falta, se usa el token de Google.
+    PAGESPEED_API_KEY: process.env.PAGESPEED_API_KEY || '',
     // URL pública del dashboard, para los links de los emails.
     APP_URL: process.env.APP_URL || 'http://localhost:4100',
     TZ: process.env.TZ || 'America/Argentina/Buenos_Aires',

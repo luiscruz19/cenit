@@ -32,6 +32,11 @@ const GaDailyChannel = sequelize.define('ga_daily_channels', {
         allowNull: false,
         defaultValue: 0,
     },
+    // Conversiones (eventos clave) atribuidas a este canal.
+    key_events: {
+        type: DataTypes.INTEGER.UNSIGNED,
+        allowNull: true,
+    },
 }, {
     tableName: 'ga_daily_channels',
     timestamps: true,

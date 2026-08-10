@@ -14,6 +14,7 @@ import { KpiStat } from '@/components/kpi-stat';
 import { SiteHealthCard, SiteActionPlan } from '@/components/site-insights';
 import { SiteMeta } from '@/components/site-meta';
 import { SiteClarity } from '@/components/site-clarity';
+import { SitePerformance } from '@/components/site-performance';
 import { SiteSummary } from '@/components/site-summary';
 import { SiteGeography } from '@/components/site-geography';
 import { SiteConversionsGuide } from '@/components/site-conversions-guide';
@@ -123,6 +124,9 @@ export function SiteDetailClient({ siteId }: { siteId: string }) {
                             current={kpis.ga?.users} previous={kpis.gaPrev?.users} yoy={kpis.gaYoy?.users} />
                         <KpiStat label="Usuarios nuevos" value={formatCompact(kpis.ga?.newUsers)} term="usuarios"
                             current={kpis.ga?.newUsers} previous={kpis.gaPrev?.newUsers} yoy={kpis.gaYoy?.newUsers} />
+                        <KpiStat label="Recurrentes" value={formatCompact(Math.max(0, (kpis.ga?.users || 0) - (kpis.ga?.newUsers || 0)))}
+                            current={Math.max(0, (kpis.ga?.users || 0) - (kpis.ga?.newUsers || 0))}
+                            previous={Math.max(0, (kpis.gaPrev?.users || 0) - (kpis.gaPrev?.newUsers || 0))} />
                         <KpiStat label="Vistas de página" value={formatCompact(kpis.ga?.pageViews)} term="vistas"
                             current={kpis.ga?.pageViews} previous={kpis.gaPrev?.pageViews} yoy={kpis.gaYoy?.pageViews} />
                         <KpiStat label="Interacción" value={formatPct(kpis.ga?.engagementRate)} term="engagement-rate"
@@ -131,6 +135,12 @@ export function SiteDetailClient({ siteId }: { siteId: string }) {
                             current={kpis.ga?.avgSessionDuration} previous={kpis.gaPrev?.avgSessionDuration} />
                         <KpiStat label="Eventos clave" value={formatCompact(kpis.ga?.keyEvents)}
                             current={kpis.ga?.keyEvents} previous={kpis.gaPrev?.keyEvents} yoy={kpis.gaYoy?.keyEvents} />
+                        <KpiStat
+                            label="Tasa de conversión"
+                            value={kpis.ga?.sessions ? formatPct((kpis.ga.keyEvents || 0) / kpis.ga.sessions) : '—'}
+                            current={kpis.ga?.sessions ? (kpis.ga.keyEvents || 0) / kpis.ga.sessions : null}
+                            previous={kpis.gaPrev?.sessions ? (kpis.gaPrev.keyEvents || 0) / kpis.gaPrev.sessions : null}
+                        />
                     </div>
 
                     {/* ── Búsqueda (GSC) ─────────────────────────────────── */}
@@ -149,6 +159,7 @@ export function SiteDetailClient({ siteId }: { siteId: string }) {
                     {/* ── Diagnóstico ────────────────────────────────────── */}
                     <Section title="Diagnóstico" />
                     <SiteHealthCard siteId={siteId} />
+                    <SitePerformance siteId={siteId} />
                     <SiteClarity siteId={siteId} period={period} />
                     <SiteMeta siteId={siteId} period={period} />
 
@@ -269,6 +280,42 @@ export function SiteDetailClient({ siteId }: { siteId: string }) {
                             />
                         </CardContent>
                     </Card>
+
+                    {/* Qué canal convierte mejor (solo si hay conversiones cargadas). */}
+                    {(data.channels || []).some((c: any) => (c.keyEvents || 0) > 0) && (
+                        <Card>
+                            <CardHeader className="pb-2">
+                                <CardTitle className="text-base">Qué canal te trae los resultados</CardTitle>
+                                <CardDescription>Conversiones y tasa por canal de tráfico.</CardDescription>
+                            </CardHeader>
+                            <CardContent>
+                                <Table>
+                                    <TableHeader>
+                                        <TableRow>
+                                            <TableHead>Canal</TableHead>
+                                            <TableHead className="text-right">Sesiones</TableHead>
+                                            <TableHead className="text-right">Conversiones</TableHead>
+                                            <TableHead className="text-right">Tasa</TableHead>
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {[...data.channels]
+                                            .sort((a: any, b: any) => (b.keyEvents || 0) - (a.keyEvents || 0))
+                                            .map((c: any) => (
+                                                <TableRow key={c.channel}>
+                                                    <TableCell className="font-medium">{c.channel}</TableCell>
+                                                    <TableCell className="text-right tabular-nums">{formatNumber(c.sessions)}</TableCell>
+                                                    <TableCell className="text-right tabular-nums">{formatNumber(c.keyEvents || 0)}</TableCell>
+                                                    <TableCell className="text-right tabular-nums">
+                                                        {c.sessions ? formatPct((c.keyEvents || 0) / c.sessions) : '—'}
+                                                    </TableCell>
+                                                </TableRow>
+                                            ))}
+                                    </TableBody>
+                                </Table>
+                            </CardContent>
+                        </Card>
+                    )}
 
                     <Section title="Contenido" hint="lo que más tracciona" />
                     <Card>

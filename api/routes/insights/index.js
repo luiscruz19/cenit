@@ -6,7 +6,7 @@ import {
     strategiesValidation,
 } from '../../validations/insights.validation.js';
 import {
-    health, seoOpportunities, monthly, rankings, rankingHistory, strategies, clarity,
+    health, seoOpportunities, monthly, rankings, rankingHistory, strategies, clarity, performance,
 } from '../../controllers/insights/insights.controllers.js';
 
 const insights = Router();
@@ -20,6 +20,7 @@ insights.get('/rankings/history', validate(rankingHistoryValidation), rankingHis
 insights.get('/rankings', validate(rankingsValidation), rankings);
 insights.get('/strategies', validate(strategiesValidation), strategies);
 insights.get('/clarity', validate(strategiesValidation), clarity);
+insights.get('/performance', validate(strategiesValidation), performance);
 insights.get('/monthly/:id', validate(monthlyValidation), monthly);
 
 export default insights;

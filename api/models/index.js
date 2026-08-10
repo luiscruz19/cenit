@@ -9,6 +9,7 @@ import GaDailyDevice from './GaDailyDevice.js';
 import GaDailyCountry from './GaDailyCountry.js';
 import GaDailyEvent from './GaDailyEvent.js';
 import GaDailyLanding from './GaDailyLanding.js';
+import SitePerformance from './SitePerformance.js';
 import GscDailyTotal from './GscDailyTotal.js';
 import GscDailyQuery from './GscDailyQuery.js';
 import GscDailyPage from './GscDailyPage.js';
@@ -43,6 +44,9 @@ for (const [Model, as] of metricModels) {
     Site.hasMany(Model, { foreignKey: 'site_id', as, constraints: false });
     Model.belongsTo(Site, { foreignKey: 'site_id', as: 'site', constraints: false });
 }
+
+Site.hasMany(SitePerformance, { foreignKey: 'site_id', as: 'sitePerformance', constraints: false });
+SitePerformance.belongsTo(Site, { foreignKey: 'site_id', as: 'site', constraints: false });
 
 Site.hasMany(ClarityDailyMetric, { foreignKey: 'site_id', as: 'clarityDailyMetrics', constraints: false });
 ClarityDailyMetric.belongsTo(Site, { foreignKey: 'site_id', as: 'site', constraints: false });
@@ -82,6 +86,7 @@ export {
     ReportSend,
     Dashboard,
     ClarityDailyMetric,
+    SitePerformance,
 };
 
 export default {
@@ -105,4 +110,5 @@ export default {
     ReportSend,
     Dashboard,
     ClarityDailyMetric,
+    SitePerformance,
 };

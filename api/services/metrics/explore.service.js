@@ -112,6 +112,7 @@ export const DATASETS = {
         metrics: {
             sessions: { label: 'Sesiones', sql: 'SUM(t.sessions)', type: 'int' },
             users: { label: 'Usuarios', sql: 'SUM(t.total_users)', type: 'int' },
+            keyEvents: { label: 'Conversiones', sql: 'SUM(t.key_events)', type: 'int' },
         },
     },
     devices: {

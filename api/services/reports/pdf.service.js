@@ -249,6 +249,38 @@ export const renderReportPdf = (data) => new Promise((resolve, reject) => {
         ], data.topPages);
     }
 
+    // ── Rendimiento (Core Web Vitals) ───────────────────────────────────
+    if (data.performance) {
+        const p = data.performance;
+        sectionTitle(doc, 'Rendimiento (Core Web Vitals · celular)');
+        const cwv = (label, value) => `${label}: ${value}`;
+        doc.font('Helvetica').fontSize(10).fillColor(MUTED).text(
+            [
+                cwv('Puntaje', p.perfScore ?? '—'),
+                cwv('LCP', p.lcpMs !== null ? `${(p.lcpMs / 1000).toFixed(1).replace('.', ',')} s` : '—'),
+                cwv('INP', p.inpMs !== null ? `${Math.round(p.inpMs)} ms` : '—'),
+                cwv('CLS', p.cls !== null ? Number(p.cls).toFixed(2).replace('.', ',') : '—'),
+            ].join('     ·     '),
+            M, doc.y, { width: CONTENT_W }
+        );
+        doc.font('Helvetica').fontSize(8).fillColor(MUTED).text(
+            p.source === 'field' ? 'Datos de usuarios reales (últimos 28 días).' : 'Medición de laboratorio.',
+            M, doc.y + 2
+        );
+        doc.moveDown(0.8);
+    }
+
+    // ── Conversión por canal ────────────────────────────────────────────
+    if (data.channelConversions?.length) {
+        sectionTitle(doc, 'Qué canal trae los resultados');
+        drawTable(doc, [
+            { key: 'channel', label: 'Canal', width: 240 },
+            { key: 'sessions', label: 'Sesiones', width: 90, align: 'right', format: fmtInt },
+            { key: 'keyEvents', label: 'Conversiones', width: 90, align: 'right', format: fmtInt },
+            { key: 'rate', label: 'Tasa', width: 79, align: 'right', format: (v) => (v === null ? '—' : fmtPct(v)) },
+        ], data.channelConversions);
+    }
+
     // ── Conversiones ────────────────────────────────────────────────────
     if (data.conversions?.length) {
         sectionTitle(doc, 'Conversiones por tipo');

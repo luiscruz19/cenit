@@ -4,6 +4,7 @@ import { getPortfolioHealth, getSeoOpportunities, getMonthlyTrend } from '../../
 import { getRankings, getRankingHistory } from '../../services/insights/rankings.service.js';
 import { getSiteStrategies } from '../../services/insights/strategies.service.js';
 import { getSiteClarity } from '../../services/insights/clarity-read.service.js';
+import { getSitePerformance } from '../../services/insights/performance-read.service.js';
 import { successMessage, errorMessage } from '../../utils/messages.js';
 
 /** GET /insights/health — salud/alertas de todo el portfolio. */
@@ -58,6 +59,19 @@ export const strategies = async (req, res) => {
 export const clarity = async (req, res) => {
     try {
         const data = await getSiteClarity(Number(req.query.siteId), req.query.period);
+        return res.json(successMessage({ extra: data }));
+    } catch (error) {
+        if (error.code === 'SITE_NOT_FOUND') {
+            return res.status(404).json(errorMessage({ message: messages.site.not_found }));
+        }
+        throw error;
+    }
+};
+
+/** GET /insights/performance?siteId= — Core Web Vitals (mobile/desktop). */
+export const performance = async (req, res) => {
+    try {
+        const data = await getSitePerformance(Number(req.query.siteId));
         return res.json(successMessage({ extra: data }));
     } catch (error) {
         if (error.code === 'SITE_NOT_FOUND') {

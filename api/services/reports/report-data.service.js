@@ -2,6 +2,7 @@ import Site from '../../models/Site.js';
 import { getOverview, getSiteDetail } from '../metrics/metrics.service.js';
 import { getPortfolioHealth, getSeoOpportunities } from '../insights/insights.service.js';
 import { getRankings } from '../insights/rankings.service.js';
+import { getSitePerformance } from '../insights/performance-read.service.js';
 
 /**
  * Junta todo lo que va a entrar en el PDF. No calcula nada nuevo: reusa los mismos
@@ -38,17 +39,33 @@ export const buildReportData = async (report) => {
         const { ga, gaPrev, gsc, gscPrev } = detail.kpis;
 
         if (sections.kpis !== false) {
+            const convRate = ga?.sessions ? (ga.keyEvents || 0) / ga.sessions : null;
+            const convRatePrev = gaPrev?.sessions ? (gaPrev.keyEvents || 0) / gaPrev.sessions : null;
             data.kpis = [
                 { label: 'Sesiones', value: ga?.sessions ?? 0, delta: pct(ga?.sessions, gaPrev?.sessions), type: 'int' },
                 { label: 'Usuarios', value: ga?.users ?? 0, delta: pct(ga?.users, gaPrev?.users), type: 'int' },
-                { label: 'Interacción', value: ga?.engagementRate ?? 0, delta: pct(ga?.engagementRate, gaPrev?.engagementRate), type: 'pct' },
+                { label: 'Conversiones', value: ga?.keyEvents ?? 0, delta: pct(ga?.keyEvents, gaPrev?.keyEvents), type: 'int' },
+                { label: 'Tasa conv.', value: convRate ?? 0, delta: pct(convRate, convRatePrev), type: 'pct' },
                 { label: 'Clicks', value: gsc?.clicks ?? 0, delta: pct(gsc?.clicks, gscPrev?.clicks), type: 'int' },
-                { label: 'Impresiones', value: gsc?.impressions ?? 0, delta: pct(gsc?.impressions, gscPrev?.impressions), type: 'int' },
-                // En posición, bajar es mejor: se invierte el signo del delta para que
-                // el verde signifique siempre "mejoró".
                 { label: 'Posición', value: gsc?.position ?? 0, delta: pct(gscPrev?.position, gsc?.position), type: 'position' },
             ];
         }
+        // Rendimiento (Core Web Vitals) — la foto de mobile.
+        try {
+            const perf = await getSitePerformance(site.id);
+            if (perf.hasData && perf.mobile) data.performance = perf.mobile;
+        } catch { /* sin datos de rendimiento: se omite la sección */ }
+        // Conversión por canal.
+        data.channelConversions = (detail.channels || [])
+            .filter((c) => (c.keyEvents || 0) > 0)
+            .sort((a, b) => (b.keyEvents || 0) - (a.keyEvents || 0))
+            .slice(0, 8)
+            .map((c) => ({
+                channel: c.channel,
+                sessions: c.sessions,
+                keyEvents: c.keyEvents,
+                rate: c.sessions ? (c.keyEvents || 0) / c.sessions : null,
+            }));
         if (sections.topPages !== false) {
             data.topPages = (detail.gscPages || []).slice(0, 10).map((p) => ({
                 label: p.page, clicks: p.clicks, impressions: p.impressions, position: p.position,

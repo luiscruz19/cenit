@@ -1,6 +1,7 @@
 import scheduleDailyEtl from './etl-daily.job.js';
 import scheduleAlerts from './alerts.job.js';
 import scheduleReports from './reports.job.js';
+import schedulePerf from './perf.job.js';
 import CONFIG from './../config/config.js';
 
 // Permite apagar los jobs (p.ej. en tests) con ENABLE_JOBS=false.
@@ -10,8 +11,9 @@ if (ENABLE_JOBS) {
     scheduleDailyEtl();
     scheduleAlerts();
     scheduleReports();
+    schedulePerf();
     console.info(
         `Jobs programados: etl-daily (${CONFIG.ETL.CRON}) · alerts (${CONFIG.ALERTS.CRON}) `
-        + `· reports (${CONFIG.REPORTS.CRON}) ${CONFIG.TZ}`
+        + `· reports (${CONFIG.REPORTS.CRON}) · perf (${CONFIG.PERF.CRON}) ${CONFIG.TZ}`
     );
 }

@@ -42,10 +42,11 @@ export const runGa4ForSite = async (authClient, site, { from, to, topN }) => {
         channel: (dims[0] || 'Unassigned').slice(0, 50),
         sessions: mets[0],
         total_users: mets[1],
+        key_events: mets[2],
     }));
     if (channels.length) {
         await GaDailyChannel.bulkCreate(channels, {
-            updateOnDuplicate: ['sessions', 'total_users', 'updatedAt'],
+            updateOnDuplicate: ['sessions', 'total_users', 'key_events', 'updatedAt'],
         });
         rows += channels.length;
     }

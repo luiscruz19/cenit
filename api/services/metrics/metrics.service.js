@@ -176,7 +176,8 @@ export const getSiteDetail = async (siteId, period) => {
             { ...base, from, to }
         ),
         select(
-            `SELECT channel, SUM(sessions) AS sessions, SUM(total_users) AS users
+            `SELECT channel, SUM(sessions) AS sessions, SUM(total_users) AS users,
+                    SUM(key_events) AS key_events
              FROM ga_daily_channels WHERE site_id = :siteId AND date BETWEEN :from AND :to
              GROUP BY channel ORDER BY sessions DESC`,
             { ...base, from, to }
@@ -273,6 +274,7 @@ export const getSiteDetail = async (siteId, period) => {
             channel: r.channel,
             sessions: num(r.sessions),
             users: num(r.users),
+            keyEvents: num(r.key_events),
             prevSessions: prevChannels.get(r.channel) ?? 0,
         })),
         devices: devices.map((r) => ({ device: r.device_category, sessions: num(r.sessions) })),

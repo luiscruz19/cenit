@@ -60,7 +60,8 @@ const REPORT_DEFS = ({ from, to, topN, singleDay }) => [
     {
         key: 'channels',
         dimensions: [{ name: 'date' }, { name: 'sessionDefaultChannelGroup' }],
-        metrics: [{ name: 'sessions' }, { name: 'totalUsers' }],
+        // keyEvents = conversiones por canal (qué canal trae los mejores resultados).
+        metrics: [{ name: 'sessions' }, { name: 'totalUsers' }, { name: 'keyEvents' }],
         limit: '100000',
     },
     {
