@@ -4,6 +4,8 @@ import GaDailyChannel from '../../models/GaDailyChannel.js';
 import GaDailyPage from '../../models/GaDailyPage.js';
 import GaDailyDevice from '../../models/GaDailyDevice.js';
 import GaDailyCountry from '../../models/GaDailyCountry.js';
+import GaDailyEvent from '../../models/GaDailyEvent.js';
+import GaDailyLanding from '../../models/GaDailyLanding.js';
 
 /**
  * ETL GA4 de un sitio para un rango [from, to]. Upserts sobre los índices únicos
@@ -90,5 +92,33 @@ export const runGa4ForSite = async (authClient, site, { from, to, topN }) => {
         rows += countries.length;
     }
 
-    return { rows, apiCalls: 1 };
+    const events = (parsed.events || []).map(({ date, dims, mets }) => ({
+        site_id: site.id,
+        date,
+        event_name: (dims[0] || '(unknown)').slice(0, 120),
+        key_events: mets[0],
+        event_count: mets[1],
+    }));
+    if (events.length) {
+        await GaDailyEvent.bulkCreate(events, {
+            updateOnDuplicate: ['key_events', 'event_count', 'updatedAt'],
+        });
+        rows += events.length;
+    }
+
+    const landings = (parsed.landings || []).map(({ date, dims, mets }) => ({
+        site_id: site.id,
+        date,
+        landing_page: (dims[0] || '(not set)').slice(0, 500),
+        sessions: mets[0],
+        key_events: mets[1],
+    }));
+    if (landings.length) {
+        await GaDailyLanding.bulkCreate(landings, {
+            updateOnDuplicate: ['sessions', 'key_events', 'updatedAt'],
+        });
+        rows += landings.length;
+    }
+
+    return { rows, apiCalls: 2 };
 };

@@ -2,6 +2,7 @@
 
 import useSWR from 'swr';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import { TrendingUp, Search, MousePointerClick } from 'lucide-react';
 import { fetcher } from '@/lib/fetcher';
 import { formatNumber, formatPct, formatPosition } from '@/lib/format';
@@ -9,6 +10,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Skeleton } from '@/components/ui/skeleton';
+import { ErrorState } from '@/components/ui/states';
 
 type Opp = {
     siteId: number; site: string; domain: string; query: string;
@@ -55,18 +57,29 @@ function OppTable({ rows, hint }: { rows: Opp[]; hint: string }) {
 }
 
 export function SeoClient() {
-    const { data, isLoading, error } = useSWR('/insights/seo-opportunities', fetcher);
+    const siteId = useSearchParams().get('site');
+    const { data: sitesData } = useSWR(siteId ? '/sites' : null, fetcher);
+    const siteName = siteId
+        ? (sitesData?.sites || []).find((s: any) => String(s.id) === siteId)?.name
+        : null;
+
+    // Con ?site= (desde el selector de proyecto) se acota a ese sitio; si no, todo el portfolio.
+    const { data, isLoading, error, mutate } = useSWR(
+        `/insights/seo-opportunities${siteId ? `?siteId=${siteId}` : ''}`, fetcher
+    );
 
     return (
         <div className="flex flex-col gap-6">
             <div>
-                <h1 className="text-xl font-semibold tracking-tight">Oportunidades SEO</h1>
+                <h1 className="text-xl font-semibold tracking-tight">
+                    Oportunidades SEO{siteName ? ` · ${siteName}` : ''}
+                </h1>
                 <p className="text-sm text-muted-foreground">
                     Consultas de Search Console (últimos 90 días) donde una acción concreta puede ganar clicks sin más tráfico.
                 </p>
             </div>
 
-            {error && <p className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">{String((error as Error).message)}</p>}
+            {error && <ErrorState message={(error as Error).message} onRetry={() => mutate()} />}
 
             {isLoading ? (
                 <><div className="grid gap-4 sm:grid-cols-3">{Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-20" />)}</div><Skeleton className="h-96" /></>

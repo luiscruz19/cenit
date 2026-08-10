@@ -54,6 +54,11 @@ export const buildReportData = async (report) => {
                 label: p.page, clicks: p.clicks, impressions: p.impressions, position: p.position,
             }));
         }
+        // Geografía y conversiones: la misma info que ve el cliente en pantalla.
+        data.geography = (detail.countries || [])
+            .filter((c) => c.country && c.country !== '(not set)')
+            .slice(0, 8);
+        data.conversions = (detail.events || []).slice(0, 8);
     } else {
         const overview = await getOverview(period);
         data.range = overview.range;

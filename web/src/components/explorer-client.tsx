@@ -15,6 +15,7 @@ import { PeriodSelector } from '@/components/period-selector';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
+import { ErrorState } from '@/components/ui/states';
 import {
     Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
@@ -81,7 +82,8 @@ function FieldChips({
 }
 
 export function ExplorerClient() {
-    const period = parsePeriod(useSearchParams().get('period'));
+    const searchParams = useSearchParams();
+    const period = parsePeriod(searchParams.get('period'));
 
     const { data: schemaData } = useSWR('/metrics/explore/schema', fetcher, { revalidateOnFocus: false });
     const { data: sitesData } = useSWR('/sites', fetcher);
@@ -91,7 +93,7 @@ export function ExplorerClient() {
     const [dataset, setDataset] = useState('traffic');
     const [dims, setDims] = useState<string[]>(['site']);
     const [mets, setMets] = useState<string[]>([]);
-    const [siteId, setSiteId] = useState(ALL);
+    const [siteId, setSiteId] = useState(searchParams.get('site') || ALL);
     const [search, setSearch] = useState('');
     const [sort, setSort] = useState<string | null>(null);
     const [desc, setDesc] = useState(true);
@@ -121,7 +123,7 @@ export function ExplorerClient() {
         return p.toString();
     }, [dataset, period, dims, mets, siteId, search, sort, desc]);
 
-    const { data, isLoading, error } = useSWR(
+    const { data, isLoading, error, mutate } = useSWR(
         mets.length ? `/metrics/explore?${qs}` : null,
         fetcher,
         { keepPreviousData: true }
@@ -242,11 +244,7 @@ export function ExplorerClient() {
                 </CardContent>
             </Card>
 
-            {error && (
-                <p className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
-                    {String((error as Error).message)}
-                </p>
-            )}
+            {error && <ErrorState message={(error as Error).message} onRetry={() => mutate()} />}
 
             {isLoading && !data ? (
                 <Skeleton className="h-96" />

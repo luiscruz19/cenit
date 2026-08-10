@@ -140,6 +140,32 @@ export const DATASETS = {
             users: { label: 'Usuarios', sql: 'SUM(t.total_users)', type: 'int' },
         },
     },
+    events: {
+        label: 'Conversiones (GA4)',
+        table: 'ga_daily_events',
+        dimensions: {
+            site: SITE_DIM,
+            date: DATE_DIM,
+            event: { label: 'Evento clave', sql: 't.event_name', groupBy: 't.event_name', type: 'text' },
+        },
+        metrics: {
+            keyEvents: { label: 'Conversiones', sql: 'SUM(t.key_events)', type: 'int' },
+            eventCount: { label: 'Eventos', sql: 'SUM(t.event_count)', type: 'int' },
+        },
+    },
+    landings: {
+        label: 'Páginas de entrada (GA4)',
+        table: 'ga_daily_landings',
+        dimensions: {
+            site: SITE_DIM,
+            date: DATE_DIM,
+            landing: { label: 'Página de entrada', sql: 't.landing_page', groupBy: 't.landing_page', type: 'text' },
+        },
+        metrics: {
+            sessions: { label: 'Sesiones', sql: 'SUM(t.sessions)', type: 'int' },
+            keyEvents: { label: 'Conversiones', sql: 'SUM(t.key_events)', type: 'int' },
+        },
+    },
 };
 
 /** Catálogo que consume el frontend para armar los selectores. */

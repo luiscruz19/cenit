@@ -1,17 +1,20 @@
 'use client';
 
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useParams, useRouter, useSearchParams } from 'next/navigation';
 import useSWR from 'swr';
 import {
     BarChart3, Settings, LogOut, AlertTriangle, ShieldAlert, Search, Lightbulb, BookOpen,
-    TrendingUp, Table2, Link2, Wrench, ChevronDown, Bell, FileText, LayoutDashboard,
+    TrendingUp, Table2, Link2, Wrench, ChevronDown, Bell, FileText, LayoutDashboard, FolderOpen,
 } from 'lucide-react';
 import { fetcher } from '@/lib/fetcher';
 import { cn } from '@/utils/shadcn';
 import {
     DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import {
+    Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from '@/components/ui/select';
 
 /** Enlaces principales, siempre visibles. */
 const LINKS = [
@@ -34,10 +37,25 @@ const TOOLS = [
 
 export function Nav() {
     const pathname = usePathname();
+    const params = useParams();
+    const router = useRouter();
+    const searchParams = useSearchParams();
     const { data: me } = useSWR('/auth/me', fetcher, { revalidateOnFocus: false });
     const { data: health } = useSWR('/insights/health', fetcher, { revalidateOnFocus: false });
+    const { data: sitesData } = useSWR('/sites', fetcher, { revalidateOnFocus: false });
     const revoked = me?.googleStatus === 'revoked';
     const critical = health?.summary?.critical || 0;
+
+    const sites = (sitesData?.sites || []).filter((s: any) => s.is_active);
+    // El proyecto activo se toma de la URL: /sites/:id, o el ?site= de las pantallas analíticas.
+    const currentSiteId = (params?.id as string) || searchParams.get('site') || '';
+    const period = searchParams.get('period') || '28d';
+
+    // Al elegir un proyecto, se va a su vista completa (el detalle es el "todo por proyecto").
+    const onPickSite = (value: string) => {
+        if (value === '__all__') router.push('/');
+        else router.push(`/sites/${value}?period=${period}`);
+    };
 
     const toolsActive = TOOLS.some((t) => pathname.startsWith(t.href));
 
@@ -52,9 +70,30 @@ export function Nav() {
                 <Link href="/" className="text-sm font-semibold tracking-tight">
                     Cenit
                 </Link>
+
+                {/* Selector de proyecto: la lente principal. Elegís un proyecto y vas a su vista completa. */}
+                {sites.length > 0 && (
+                    <Select value={currentSiteId || '__all__'} onValueChange={onPickSite}>
+                        <SelectTrigger className="h-8 w-[150px] gap-1.5 border-dashed text-sm sm:w-[190px]">
+                            <FolderOpen className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                            <SelectValue placeholder="Proyecto…" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="__all__">Todos los proyectos</SelectItem>
+                            {sites.map((s: any) => (
+                                <SelectItem key={s.id} value={String(s.id)}>{s.name}</SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                )}
+
                 <nav className="flex items-center gap-0.5">
-                    {LINKS.map(({ href, label, icon: Icon, match }) => (
-                        <Link key={href} href={href} className={linkClass(match(pathname))}>
+                    {LINKS.map(({ href, label, icon: Icon, match }) => {
+                        // Con un proyecto activo, las pantallas analíticas se abren ya filtradas a él.
+                        const scopeable = ['/rankings', '/oportunidades'].includes(href);
+                        const to = currentSiteId && scopeable ? `${href}?site=${currentSiteId}` : href;
+                        return (
+                        <Link key={href} href={to} className={linkClass(match(pathname))}>
                             <Icon className="h-4 w-4" />
                             <span className="hidden lg:inline">{label}</span>
                             {href === '/salud' && critical > 0 && (
@@ -63,7 +102,8 @@ export function Nav() {
                                 </span>
                             )}
                         </Link>
-                    ))}
+                        );
+                    })}
 
                     <DropdownMenu>
                         <DropdownMenuTrigger className={linkClass(toolsActive)}>

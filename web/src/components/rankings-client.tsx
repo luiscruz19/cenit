@@ -11,6 +11,7 @@ import { cn } from '@/utils/shadcn';
 import { PeriodSelector } from '@/components/period-selector';
 import { PositionChart } from '@/components/charts/position-chart';
 import { InfoTip } from '@/components/info-tip';
+import { ErrorState } from '@/components/ui/states';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -80,8 +81,10 @@ function Stat({ label, value, hint, term }: { label: string; value: string; hint
 }
 
 export function RankingsClient() {
-    const period = parsePeriod(useSearchParams().get('period'));
-    const [siteId, setSiteId] = useState<string>(ALL);
+    const searchParams = useSearchParams();
+    const period = parsePeriod(searchParams.get('period'));
+    // Arranca filtrado al proyecto activo si se llegó con ?site= desde el selector del nav.
+    const [siteId, setSiteId] = useState<string>(searchParams.get('site') || ALL);
     const [bucket, setBucket] = useState<string>('all');
     const [search, setSearch] = useState('');
     const [detail, setDetail] = useState<Row | null>(null);
@@ -94,7 +97,7 @@ export function RankingsClient() {
     if (bucket !== 'all') qs.set('bucket', bucket);
     if (search.trim()) qs.set('search', search.trim());
 
-    const { data, isLoading, error } = useSWR(`/insights/rankings?${qs}`, fetcher, {
+    const { data, isLoading, error, mutate } = useSWR(`/insights/rankings?${qs}`, fetcher, {
         keepPreviousData: true,
     });
 
@@ -121,11 +124,7 @@ export function RankingsClient() {
                 <PeriodSelector />
             </div>
 
-            {error && (
-                <p className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
-                    {String((error as Error).message)}
-                </p>
-            )}
+            {error && <ErrorState message={(error as Error).message} onRetry={() => mutate()} />}
 
             {isLoading && !data ? (
                 <>

@@ -92,29 +92,62 @@ const REPORT_DEFS = ({ from, to, topN, singleDay }) => [
 }));
 
 /**
+ * Segundo batch: conversiones por nombre (eventos clave) y páginas de aterrizaje. No entran
+ * en el primero porque batchRunReports admite máximo 5 reportes. Es una segunda llamada API.
+ */
+const REPORT_DEFS_2 = ({ from, to, topN, singleDay }) => [
+    {
+        key: 'events',
+        dimensions: [{ name: 'date' }, { name: 'eventName' }],
+        metrics: [{ name: 'keyEvents' }, { name: 'eventCount' }],
+        limit: '100000',
+        // Solo eventos clave: los que cuentan como conversión.
+        dimensionFilter: {
+            filter: { fieldName: 'isKeyEvent', stringFilter: { value: 'true' } },
+        },
+        orderBys: [{ metric: { metricName: 'keyEvents' }, desc: true }],
+    },
+    {
+        key: 'landings',
+        dimensions: [{ name: 'date' }, { name: 'landingPage' }],
+        metrics: [{ name: 'sessions' }, { name: 'keyEvents' }],
+        limit: singleDay ? String(topN) : '100000',
+        orderBys: [{ metric: { metricName: 'sessions' }, desc: true }],
+    },
+].map(({ key, ...report }) => ({
+    key,
+    report: { ...report, dateRanges: [{ startDate: from, endDate: to }] },
+}));
+
+/**
  * Corre los 4 reportes del ETL en UNA llamada (batchRunReports) y devuelve filas parseadas:
  * { totals: [{date, ...}], channels: [...], pages: [...], devices: [...] }
  */
 export const runReports = async (authClient, propertyId, { from, to, topN }) => {
     const dataApi = google.analyticsdata({ version: 'v1beta', auth: authClient });
-    const defs = REPORT_DEFS({ from, to, topN, singleDay: from === to });
+    const singleDay = from === to;
+    const defs1 = REPORT_DEFS({ from, to, topN, singleDay });
+    const defs2 = REPORT_DEFS_2({ from, to, topN, singleDay });
 
-    const { data } = await withRetry(() =>
-        dataApi.properties.batchRunReports({
-            property: `properties/${propertyId}`,
-            requestBody: { requests: defs.map((d) => d.report) },
-        })
-    );
+    const property = `properties/${propertyId}`;
+    // Dos batches (5 + 2) porque batchRunReports admite máximo 5 reportes. Van en paralelo.
+    const [res1, res2] = await Promise.all([
+        withRetry(() => dataApi.properties.batchRunReports({ property, requestBody: { requests: defs1.map((d) => d.report) } })),
+        withRetry(() => dataApi.properties.batchRunReports({ property, requestBody: { requests: defs2.map((d) => d.report) } })),
+    ]);
 
     const parsed = {};
-    (data.reports || []).forEach((report, i) => {
-        const key = defs[i].key;
-        parsed[key] = (report.rows || []).map((row) => {
-            const dims = row.dimensionValues.map((v) => v.value);
-            const mets = row.metricValues.map((v) => Number(v.value) || 0);
-            return { date: fromGa4Date(dims[0]), dims: dims.slice(1), mets };
+    const collect = (defs, data) => {
+        (data.reports || []).forEach((report, i) => {
+            parsed[defs[i].key] = (report.rows || []).map((row) => {
+                const dims = row.dimensionValues.map((v) => v.value);
+                const mets = row.metricValues.map((v) => Number(v.value) || 0);
+                return { date: fromGa4Date(dims[0]), dims: dims.slice(1), mets };
+            });
         });
-    });
+    };
+    collect(defs1, res1.data);
+    collect(defs2, res2.data);
 
     // Recorte a top N por fecha para pages y countries (solo hace falta en rangos multi-día;
     // la API no soporta "top N por fecha", así que se pide de más y se recorta acá).
@@ -131,6 +164,7 @@ export const runReports = async (authClient, propertyId, { from, to, topN }) => 
     if (from !== to) {
         if (parsed.pages) parsed.pages = trimByDate(parsed.pages);
         if (parsed.countries) parsed.countries = trimByDate(parsed.countries);
+        if (parsed.landings) parsed.landings = trimByDate(parsed.landings);
     }
 
     return parsed;

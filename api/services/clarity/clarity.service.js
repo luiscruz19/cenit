@@ -1,4 +1,5 @@
 import { decrypt } from '../google/crypto.service.js';
+import { parseClarityPayload } from './clarity.parse.js';
 
 /**
  * Cliente de la Data Export API de Microsoft Clarity.
@@ -7,43 +8,11 @@ import { decrypt } from '../google/crypto.service.js';
  * Auth:     Authorization: Bearer <token de proyecto>  (Settings → Data Export en Clarity)
  * Límites:  numOfDays ∈ {1,2,3} · 10 requests/día/proyecto · máx 1.000 filas · sin paginar.
  *
- * Los nombres de campo son los REALES de la API (verificados contra respuestas en vivo, no
- * los de la doc de Microsoft, que tiene el typo "distantUserCount"). La respuesta es un
- * array de bloques { metricName, information: [...] }. Sin dimensiones, cada bloque trae una
- * sola fila de resumen.
- *
- * La fricción se guarda como PORCENTAJE de sesiones con esa fricción (sessionsWithMetric-
- * Percentage), que es lo que Clarity muestra en su panel y lo único comparable entre un
- * sitio grande y uno chico sin normalizar a mano.
+ * El parseo de la respuesta vive en clarity.parse.js (puro y testeado). Acá queda solo la
+ * llamada de red.
  */
 
 const ENDPOINT = 'https://www.clarity.ms/export-data/api/v1/project-live-insights';
-
-const norm = (s) => String(s || '').toLowerCase().replace(/[^a-z]/g, '');
-
-const toNum = (v) => {
-    if (v === null || v === undefined || v === '') return null;
-    const n = Number(v);
-    return Number.isFinite(n) ? n : null;
-};
-
-/** Primera fila del bloque cuyo metricName coincide con alguno de los nombres dados. */
-const firstRow = (payload, ...names) => {
-    if (!Array.isArray(payload)) return {};
-    const wanted = names.map(norm);
-    const block = payload.find((b) => b && wanted.includes(norm(b.metricName)));
-    return block && Array.isArray(block.information) ? (block.information[0] || {}) : {};
-};
-
-/** Lee un campo de una fila probando varios nombres (case/spacing-insensitive). */
-const field = (row, ...candidates) => {
-    const keys = Object.keys(row || {});
-    for (const c of candidates) {
-        const k = keys.find((key) => norm(key) === norm(c));
-        if (k !== undefined) return toNum(row[k]);
-    }
-    return null;
-};
 
 /** Llama a la API con el token en claro. Devuelve el JSON o tira con un error legible. */
 const callApi = async (token, numOfDays) => {
@@ -73,32 +42,7 @@ const callApi = async (token, numOfDays) => {
  */
 export const fetchClarityMetrics = async (token, numOfDays = 1) => {
     const payload = await callApi(token, Math.min(Math.max(numOfDays, 1), 3));
-
-    const traffic = firstRow(payload, 'Traffic');
-    const scroll = firstRow(payload, 'ScrollDepth', 'Scroll Depth');
-    const engagement = firstRow(payload, 'EngagementTime', 'Engagement Time');
-
-    // % de sesiones con cada tipo de fricción.
-    const frictionPct = (...names) =>
-        field(firstRow(payload, ...names), 'sessionsWithMetricPercentage');
-
-    return {
-        sessions: field(traffic, 'totalSessionCount'),
-        botSessions: field(traffic, 'totalBotSessionCount'),
-        distinctUsers: field(traffic, 'distinctUserCount', 'distantUserCount'),
-        pagesPerSession: field(traffic, 'pagesPerSessionPercentage'),
-
-        deadClickPct: frictionPct('DeadClickCount', 'Dead Click Count'),
-        rageClickPct: frictionPct('RageClickCount', 'Rage Click Count'),
-        quickbackPct: frictionPct('QuickbackClick', 'Quickback Click'),
-        excessiveScrollPct: frictionPct('ExcessiveScroll', 'Excessive Scroll'),
-        scriptErrorPct: frictionPct('ScriptErrorCount', 'Script Error Count'),
-        errorClickPct: frictionPct('ErrorClickCount', 'Error Click Count'),
-
-        avgScrollDepth: field(scroll, 'averageScrollDepth'),
-        // activeTime = tiempo realmente interactuando (no incluye la pestaña en idle).
-        avgActiveTime: field(engagement, 'activeTime', 'totalTime'),
-    };
+    return parseClarityPayload(payload);
 };
 
 /** Conveniencia: recibe el sitio, descifra el token y trae las métricas. */

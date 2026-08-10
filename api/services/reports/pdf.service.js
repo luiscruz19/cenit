@@ -249,6 +249,24 @@ export const renderReportPdf = (data) => new Promise((resolve, reject) => {
         ], data.topPages);
     }
 
+    // ── Conversiones ────────────────────────────────────────────────────
+    if (data.conversions?.length) {
+        sectionTitle(doc, 'Conversiones por tipo');
+        drawTable(doc, [
+            { key: 'event', label: 'Evento clave', width: 380 },
+            { key: 'keyEvents', label: 'Conversiones', width: 119, align: 'right', format: fmtInt },
+        ], data.conversions);
+    }
+
+    // ── Geografía ───────────────────────────────────────────────────────
+    if (data.geography?.length) {
+        sectionTitle(doc, 'De dónde entra la gente');
+        drawTable(doc, [
+            { key: 'country', label: 'País', width: 380 },
+            { key: 'sessions', label: 'Sesiones', width: 119, align: 'right', format: fmtInt },
+        ], data.geography);
+    }
+
     // ── Pie de página en todas las hojas ────────────────────────────────
     const range = doc.bufferedPageRange();
     for (let i = 0; i < range.count; i++) {

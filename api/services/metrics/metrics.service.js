@@ -157,7 +157,7 @@ export const getSiteDetail = async (siteId, period) => {
         gaCur, gaPrev, gaYoy, gscCur, gscPrev, gscYoy,
         gaSeries, gscSeries,
         channelsCur, channelsPrev, devices,
-        gaPages, gscQueries, gscPages, countries,
+        gaPages, gscQueries, gscPages, countries, events, landings,
     ] = await Promise.all([
         select(gaSql, { ...base, from, to }),
         select(gaSql, { ...base, from: prevFrom, to: prevTo }),
@@ -219,6 +219,18 @@ export const getSiteDetail = async (siteId, period) => {
              GROUP BY country ORDER BY sessions DESC LIMIT 12`,
             { ...base, from, to }
         ),
+        select(
+            `SELECT event_name, SUM(key_events) AS key_events
+             FROM ga_daily_events WHERE site_id = :siteId AND date BETWEEN :from AND :to
+             GROUP BY event_name ORDER BY key_events DESC LIMIT 12`,
+            { ...base, from, to }
+        ),
+        select(
+            `SELECT landing_page, SUM(sessions) AS sessions, SUM(key_events) AS key_events
+             FROM ga_daily_landings WHERE site_id = :siteId AND date BETWEEN :from AND :to
+             GROUP BY landing_page ORDER BY sessions DESC LIMIT 20`,
+            { ...base, from, to }
+        ),
     ]);
 
     // Merge de series GA4 + GSC por fecha (GSC puede no tener los últimos días).
@@ -265,6 +277,10 @@ export const getSiteDetail = async (siteId, period) => {
         })),
         devices: devices.map((r) => ({ device: r.device_category, sessions: num(r.sessions) })),
         countries: countries.map((r) => ({ country: r.country, sessions: num(r.sessions) })),
+        events: events.map((r) => ({ event: r.event_name, keyEvents: num(r.key_events) })),
+        landings: landings.map((r) => ({
+            path: r.landing_page, sessions: num(r.sessions), keyEvents: num(r.key_events),
+        })),
         gaPages: gaPages.map((r) => ({
             path: r.page_path, pageViews: num(r.page_views), sessions: num(r.sessions),
         })),

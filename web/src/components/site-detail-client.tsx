@@ -230,15 +230,69 @@ export function SiteDetailClient({ siteId }: { siteId: string }) {
                     <SiteRankings siteId={siteId} period={period} />
 
                     {/* ── Contenido ──────────────────────────────────────── */}
+                    {/* ── Resultados (conversiones) ──────────────────────── */}
+                    <Section title="Resultados" hint="eventos clave configurados en GA4" />
+                    <Card>
+                        <CardHeader className="pb-2">
+                            <CardTitle className="text-base">Conversiones por tipo</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            {(data.events || []).length === 0 ? (
+                                <p className="text-sm text-muted-foreground">
+                                    Este sitio no tiene eventos clave configurados en GA4, o no hubo conversiones en el período.
+                                    Definí qué es una conversión (formulario, WhatsApp, compra) y marcala como evento clave para verla acá.
+                                </p>
+                            ) : (
+                                <Table>
+                                    <TableHeader>
+                                        <TableRow>
+                                            <TableHead>Evento clave</TableHead>
+                                            <TableHead className="text-right">Conversiones</TableHead>
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {data.events.map((e: any) => (
+                                            <TableRow key={e.event}>
+                                                <TableCell className="font-medium">{e.event}</TableCell>
+                                                <TableCell className="text-right tabular-nums">{formatNumber(e.keyEvents)}</TableCell>
+                                            </TableRow>
+                                        ))}
+                                    </TableBody>
+                                </Table>
+                            )}
+                        </CardContent>
+                    </Card>
+
                     <Section title="Contenido" hint="lo que más tracciona" />
                     <Card>
                         <CardHeader className="pb-0">
                             <Tabs defaultValue="ga-pages">
                                 <TabsList>
                                     <TabsTrigger value="ga-pages">Páginas (GA4)</TabsTrigger>
+                                    <TabsTrigger value="landings">Páginas de entrada</TabsTrigger>
                                     <TabsTrigger value="gsc-queries">Consultas (GSC)</TabsTrigger>
                                     <TabsTrigger value="gsc-pages">Páginas (GSC)</TabsTrigger>
                                 </TabsList>
+                                <TabsContent value="landings" className="mt-2">
+                                    <Table>
+                                        <TableHeader>
+                                            <TableRow>
+                                                <TableHead>Página de entrada</TableHead>
+                                                <TableHead className="text-right">Sesiones</TableHead>
+                                                <TableHead className="text-right">Conversiones</TableHead>
+                                            </TableRow>
+                                        </TableHeader>
+                                        <TableBody>
+                                            {(data.landings || []).map((p: any) => (
+                                                <TableRow key={p.path}>
+                                                    <TableCell className="max-w-md truncate font-mono text-xs">{p.path}</TableCell>
+                                                    <TableCell className="text-right tabular-nums">{formatNumber(p.sessions)}</TableCell>
+                                                    <TableCell className="text-right tabular-nums">{formatNumber(p.keyEvents)}</TableCell>
+                                                </TableRow>
+                                            ))}
+                                        </TableBody>
+                                    </Table>
+                                </TabsContent>
                                 <TabsContent value="ga-pages" className="mt-2">
                                     <Table>
                                         <TableHeader>
