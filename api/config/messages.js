@@ -30,6 +30,19 @@ const messages = {
         already_running: 'Ya hay una corrida de ETL en curso',
         run_not_found: 'Corrida no encontrada',
     },
+    alerts: {
+        rule_not_found: 'Regla de alerta no encontrada',
+        name_required: 'La regla necesita un nombre',
+        threshold_required: 'El umbral tiene que ser un número',
+    },
+    reports: {
+        not_found: 'Reporte no encontrado',
+        name_required: 'El reporte necesita un nombre',
+    },
+    dashboards: {
+        not_found: 'Dashboard no encontrado',
+        name_required: 'El dashboard necesita un nombre',
+    },
 };
 
 export default messages;

@@ -11,6 +11,8 @@ import {
 import {
     Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
+import { ClarityFields } from '@/components/clarity-fields';
+import { btn, btnPrimary } from '@/lib/ui';
 
 const NONE = '__none__';
 
@@ -19,10 +21,8 @@ type Discovery = {
     gscSites: { siteUrl: string; host: string }[];
 };
 
-const btn = 'inline-flex h-9 items-center gap-2 rounded-md border bg-background px-3 text-sm font-medium shadow-sm transition-colors hover:bg-muted disabled:opacity-50';
-const btnPrimary = 'inline-flex h-9 items-center gap-2 rounded-md bg-primary px-3 text-sm font-medium text-primary-foreground shadow transition-colors hover:bg-primary/90 disabled:opacity-50';
 
-const emptyForm = { name: '', domain: '', ga4: NONE, gsc: NONE };
+const emptyForm = { name: '', domain: '', ga4: NONE, gsc: NONE, clarityProject: '', clarityToken: '' };
 
 /**
  * Alta de sitio reutilizable: nombre + dominio y, opcionalmente, mapeo a GA4/GSC
@@ -59,6 +59,8 @@ export function NewSiteDialog({ onCreated }: { onCreated?: () => void }) {
                 domain: form.domain.trim(),
                 ga4_property_id: form.ga4 === NONE ? null : form.ga4,
                 gsc_site_url: form.gsc === NONE ? null : form.gsc,
+                clarity_project_id: form.clarityProject.trim() || null,
+                ...(form.clarityToken.trim() ? { clarity_api_token: form.clarityToken.trim() } : {}),
             });
             setOpen(false);
             onCreated?.();
@@ -143,6 +145,13 @@ export function NewSiteDialog({ onCreated }: { onCreated?: () => void }) {
                             </SelectContent>
                         </Select>
                     </div>
+                    <ClarityFields
+                        idPrefix="new"
+                        projectId={form.clarityProject}
+                        token={form.clarityToken}
+                        onProject={(v) => setForm((f) => ({ ...f, clarityProject: v }))}
+                        onToken={(v) => setForm((f) => ({ ...f, clarityToken: v }))}
+                    />
                     {error && <p className="text-sm text-destructive">✗ {error}</p>}
                 </div>
                 <DialogFooter>

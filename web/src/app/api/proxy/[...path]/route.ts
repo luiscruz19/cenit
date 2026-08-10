@@ -12,10 +12,22 @@ async function handle(req: NextRequest, path: string[]) {
         init.body = await req.text();
     }
     const res = await apiFetch(target, init);
+    const contentType = res.headers.get('Content-Type') || 'application/json';
+
+    // Las respuestas binarias (el PDF de los reportes) NO pueden pasar por res.text():
+    // decodificarlas como texto corrompe los bytes. Se reenvían tal cual.
+    if (!contentType.includes('json') && !contentType.startsWith('text/')) {
+        const buffer = await res.arrayBuffer();
+        const headers: Record<string, string> = { 'Content-Type': contentType };
+        const disposition = res.headers.get('Content-Disposition');
+        if (disposition) headers['Content-Disposition'] = disposition;
+        return new NextResponse(buffer, { status: res.status, headers });
+    }
+
     const text = await res.text();
     return new NextResponse(text, {
         status: res.status,
-        headers: { 'Content-Type': res.headers.get('Content-Type') || 'application/json' },
+        headers: { 'Content-Type': contentType },
     });
 }
 

@@ -3,15 +3,17 @@
 import { useEffect, useState } from 'react';
 import { Loader2 } from 'lucide-react';
 import { fetcher, putJson } from '@/lib/fetcher';
-import { cn } from '@/utils/shadcn';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
+import { ClarityFields } from '@/components/clarity-fields';
 import {
     Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from '@/components/ui/dialog';
 import {
     Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
+import { btn, btnPrimary } from '@/lib/ui';
 
 const NONE = '__none__';
 
@@ -26,11 +28,11 @@ export type EditableSite = {
     domain: string;
     ga4_property_id: string | null;
     gsc_site_url: string | null;
+    clarity_project_id: string | null;
+    clarity_connected: boolean;
     is_active: boolean;
 };
 
-const btn = 'inline-flex h-9 items-center gap-2 rounded-md border bg-background px-3 text-sm font-medium shadow-sm transition-colors hover:bg-muted disabled:opacity-50';
-const btnPrimary = 'inline-flex h-9 items-center gap-2 rounded-md bg-primary px-3 text-sm font-medium text-primary-foreground shadow transition-colors hover:bg-primary/90 disabled:opacity-50';
 
 /**
  * Edición de un sitio existente: nombre, dominio, mapeo GA4/GSC y estado activo/inactivo
@@ -44,7 +46,10 @@ export function EditSiteDialog({
     onOpenChange: (open: boolean) => void;
     onSaved?: (message: string) => void;
 }) {
-    const [form, setForm] = useState({ name: '', domain: '', ga4: NONE, gsc: NONE, isActive: true });
+    const [form, setForm] = useState({
+        name: '', domain: '', ga4: NONE, gsc: NONE, isActive: true,
+        clarityProject: '', clarityToken: '',
+    });
     const [discovery, setDiscovery] = useState<Discovery | null>(null);
     const [loadingDisc, setLoadingDisc] = useState(false);
     const [saving, setSaving] = useState(false);
@@ -59,6 +64,8 @@ export function EditSiteDialog({
             ga4: site.ga4_property_id || NONE,
             gsc: site.gsc_site_url || NONE,
             isActive: site.is_active,
+            clarityProject: site.clarity_project_id || '',
+            clarityToken: '', // nunca precargamos el token; vacío = no tocar.
         });
         setError(null);
         if (!discovery && !loadingDisc) {
@@ -80,6 +87,9 @@ export function EditSiteDialog({
                 domain: form.domain.trim(),
                 ga4_property_id: form.ga4 === NONE ? null : form.ga4,
                 gsc_site_url: form.gsc === NONE ? null : form.gsc,
+                clarity_project_id: form.clarityProject.trim() || null,
+                // Solo se manda si escribieron algo: vacío = dejar el token como está.
+                ...(form.clarityToken.trim() ? { clarity_api_token: form.clarityToken.trim() } : {}),
                 is_active: form.isActive,
             });
             onOpenChange(false);
@@ -157,21 +167,26 @@ export function EditSiteDialog({
                             </SelectContent>
                         </Select>
                     </div>
+                    <ClarityFields
+                        idPrefix="edit"
+                        projectId={form.clarityProject}
+                        token={form.clarityToken}
+                        connected={site?.clarity_connected}
+                        onProject={(v) => setForm((f) => ({ ...f, clarityProject: v }))}
+                        onToken={(v) => setForm((f) => ({ ...f, clarityToken: v }))}
+                    />
                     <div className="flex flex-col gap-1.5">
-                        <Label>Estado</Label>
-                        <button
-                            type="button"
-                            onClick={() => setForm((f) => ({ ...f, isActive: !f.isActive }))}
-                            className={cn(
-                                'inline-flex h-9 w-fit items-center gap-2 rounded-md border px-3 text-sm font-medium transition-colors',
-                                form.isActive
-                                    ? 'border-emerald-600/30 bg-emerald-600/10 text-emerald-700 dark:text-emerald-400'
-                                    : 'bg-muted text-muted-foreground'
-                            )}
-                        >
-                            <span className={cn('h-2 w-2 rounded-full', form.isActive ? 'bg-emerald-600' : 'bg-muted-foreground')} />
-                            {form.isActive ? 'Activo' : 'Inactivo'}
-                        </button>
+                        <Label htmlFor="edit-site-active">Estado</Label>
+                        <div className="flex items-center gap-2.5">
+                            <Switch
+                                id="edit-site-active"
+                                checked={form.isActive}
+                                onCheckedChange={(checked) => setForm((f) => ({ ...f, isActive: checked }))}
+                            />
+                            <span className="text-sm font-medium">
+                                {form.isActive ? 'Activo' : 'Inactivo'}
+                            </span>
+                        </div>
                         <p className="text-xs text-muted-foreground">
                             Un sitio inactivo no aparece en el overview ni recibe datos nuevos del ETL, pero conserva su histórico.
                         </p>

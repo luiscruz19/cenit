@@ -46,7 +46,7 @@ export function KpiStat({ label, value, current, previous, yoy, invert = false, 
     return (
         <Card>
             <CardContent className="p-4">
-                <p className="flex items-center gap-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                <p className="flex items-center gap-1 text-xs font-medium text-muted-foreground">
                     {label}
                     {term && <InfoTip term={term} />}
                 </p>

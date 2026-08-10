@@ -8,10 +8,20 @@ const config: Config = {
     ],
     theme: {
         extend: {
+            fontFamily: {
+                // El cuerpo y los títulos son familias distintas: es la decisión
+                // tipográfica, no un tamaño más grande de la misma fuente.
+                sans: ['var(--font-sans)', 'system-ui', 'sans-serif'],
+                display: ['var(--font-display)', 'system-ui', 'sans-serif'],
+                mono: ['ui-monospace', 'SFMono-Regular', 'Menlo', 'Consolas', 'monospace'],
+            },
             borderRadius: {
-                lg: 'var(--radius)',
-                md: 'calc(var(--radius) - 2px)',
-                sm: 'calc(var(--radius) - 4px)'
+                // Escala propia y filosa. El default de shadcn era 0.5rem parejo en todo;
+                // acá el radio crece con la superficie en vez de ser una sola decisión
+                // estirada a todo el sistema.
+                lg: 'calc(var(--radius) + 2px)',
+                md: 'var(--radius)',
+                sm: 'calc(var(--radius) - 1px)'
             },
             colors: {
                 background: 'hsl(var(--background))',

@@ -5,6 +5,7 @@ import EtlRun from '../../models/EtlRun.js';
 import { getAuthedClient, markRevoked, isInvalidGrant } from '../google/oauth.service.js';
 import { runGa4ForSite } from './ga4.etl.js';
 import { runGscForSite } from './gsc.etl.js';
+import { runClarityForSite } from './clarity.etl.js';
 import { todayArt, addDays } from '../../utils/dates.js';
 
 const { ETL } = CONFIG;
@@ -94,6 +95,7 @@ const executeRun = async (run, { source, siteId, ranges }) => {
         const sites = await Site.findAll({ where });
         const doGa4 = source === 'all' || source === 'ga4';
         const doGsc = source === 'all' || source === 'gsc';
+        const doClarity = source === 'all' || source === 'clarity';
 
         let revokedError = null;
 
@@ -112,6 +114,19 @@ const executeRun = async (run, { source, siteId, ranges }) => {
                     stats.rowsUpserted += r.rows;
                     stats.apiCalls += r.apiCalls;
                     touched = true;
+                }
+                // Clarity es independiente de Google (token propio, ventana de 24h): un
+                // fallo suyo no debe tumbar el sitio ni el run, así que va en su propio try.
+                if (doClarity && site.clarity_api_token_enc) {
+                    try {
+                        const r = await runClarityForSite(site);
+                        stats.rowsUpserted += r.rows;
+                        stats.apiCalls += r.apiCalls;
+                        touched = true;
+                    } catch (clarityError) {
+                        console.error(`[etl] clarity ${site.domain} falló:`, clarityError.message);
+                        stats.sitesFailed.push({ site: `${site.domain} (clarity)`, error: String(clarityError.message).slice(0, 300) });
+                    }
                 }
                 if (touched) stats.sitesOk++;
             } catch (error) {

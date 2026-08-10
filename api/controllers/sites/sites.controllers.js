@@ -5,6 +5,7 @@ import Site from '../../models/Site.js';
 import { getAuthedClient } from '../../services/google/oauth.service.js';
 import { listProperties, getPropertyHost } from '../../services/google/ga4.service.js';
 import { listSites as listGscSites, gscHost } from '../../services/google/gsc.service.js';
+import { encrypt } from '../../services/google/crypto.service.js';
 import { successMessage, errorMessage } from '../../utils/messages.js';
 
 const normalizeDomain = (value = '') =>
@@ -12,6 +13,15 @@ const normalizeDomain = (value = '') =>
         .replace(/^https?:\/\//, '')
         .replace(/^www\./, '')
         .replace(/\/.*$/, '');
+
+/**
+ * Serializa un sitio para el cliente SIN filtrar el token de Clarity. El token cifrado
+ * jamás sale de la API: se reemplaza por un booleano `clarity_connected`.
+ */
+const publicSite = (site) => {
+    const { clarity_api_token_enc, ...rest } = site.toJSON();
+    return { ...rest, clarity_connected: Boolean(clarity_api_token_enc) };
+};
 
 /** GET /sites — sitios + última fecha con datos por fuente. */
 export const listSites = async (req, res) => {
@@ -32,7 +42,7 @@ export const listSites = async (req, res) => {
     return res.json(successMessage({
         extra: {
             sites: sites.map((s) => ({
-                ...s.toJSON(),
+                ...publicSite(s),
                 last_ga_date: gaMap.get(s.id) || null,
                 last_gsc_date: gscMap.get(s.id) || null,
             })),
@@ -52,8 +62,12 @@ export const createSite = async (req, res) => {
         domain,
         ga4_property_id: req.body.ga4_property_id || null,
         gsc_site_url: req.body.gsc_site_url || null,
+        clarity_project_id: req.body.clarity_project_id || null,
+        clarity_api_token_enc: req.body.clarity_api_token
+            ? encrypt(req.body.clarity_api_token.trim())
+            : null,
     });
-    return res.status(201).json(successMessage({ extra: { site } }));
+    return res.status(201).json(successMessage({ extra: { site: publicSite(site) } }));
 };
 
 /** PUT /sites/:id */
@@ -66,10 +80,18 @@ export const updateSite = async (req, res) => {
     if (req.body.domain !== undefined) fields.domain = normalizeDomain(req.body.domain);
     if (req.body.ga4_property_id !== undefined) fields.ga4_property_id = req.body.ga4_property_id || null;
     if (req.body.gsc_site_url !== undefined) fields.gsc_site_url = req.body.gsc_site_url || null;
+    if (req.body.clarity_project_id !== undefined) fields.clarity_project_id = req.body.clarity_project_id || null;
+    // El token solo se toca si viene en el body: '' lo borra, undefined lo deja como está
+    // (así el form puede no reenviarlo y no perderlo).
+    if (req.body.clarity_api_token !== undefined) {
+        fields.clarity_api_token_enc = req.body.clarity_api_token.trim()
+            ? encrypt(req.body.clarity_api_token.trim())
+            : null;
+    }
     if (req.body.is_active !== undefined) fields.is_active = Boolean(req.body.is_active);
 
     await site.update(fields);
-    return res.json(successMessage({ extra: { site } }));
+    return res.json(successMessage({ extra: { site: publicSite(site) } }));
 };
 
 /** DELETE /sites/:id — si tiene métricas cargadas solo se desactiva. */
@@ -83,7 +105,7 @@ export const deleteSite = async (req, res) => {
     );
     if (Number(row.total) > 0) {
         await site.update({ is_active: false });
-        return res.json(successMessage({ message: messages.site.has_data, extra: { site } }));
+        return res.json(successMessage({ message: messages.site.has_data, extra: { site: publicSite(site) } }));
     }
     await site.destroy();
     return res.json(successMessage({ extra: { deleted: true } }));

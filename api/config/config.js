@@ -40,6 +40,25 @@ const CONFIG = {
         BACKFILL_MONTHS: parseInt(process.env.BACKFILL_MONTHS, 10) || 16,
         CONCURRENCY: parseInt(process.env.ETL_CONCURRENCY, 10) || 3,
     },
+    // SMTP para alertas y envíos de reportes. Sin esto, las alertas se registran igual
+    // pero no se notifican (el sistema degrada, no falla).
+    MAIL: {
+        HOST: process.env.SMTP_HOST || '',
+        PORT: parseInt(process.env.SMTP_PORT, 10) || 587,
+        USER: process.env.SMTP_USER || '',
+        PASS: process.env.SMTP_PASS || '',
+        FROM: process.env.SMTP_FROM || 'Cenit <no-reply@localhost>',
+    },
+    ALERTS: {
+        // Corre después del ETL diario: primero entran los datos, después se evalúan.
+        CRON: process.env.ALERTS_CRON || '30 5 * * *',
+    },
+    REPORTS: {
+        // Cada hora en punto: el job revisa qué reportes caen en esta hora.
+        CRON: process.env.REPORTS_CRON || '0 * * * *',
+    },
+    // URL pública del dashboard, para los links de los emails.
+    APP_URL: process.env.APP_URL || 'http://localhost:4100',
     TZ: process.env.TZ || 'America/Argentina/Buenos_Aires',
 };
 

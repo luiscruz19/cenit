@@ -18,6 +18,12 @@ import {
 import {
     Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
+import { btn, btnPrimary, btnDestructive } from '@/lib/ui';
+import { toast } from 'sonner';
+import {
+    AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+    AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 
 const NONE = '__none__';
 
@@ -27,8 +33,6 @@ type Discovery = {
     suggestions: { siteId: number; ga4PropertyId: string | null; gscSiteUrl: string | null }[];
 };
 
-const btn = 'inline-flex h-9 items-center gap-2 rounded-md border bg-background px-3 text-sm font-medium shadow-sm transition-colors hover:bg-muted disabled:opacity-50';
-const btnPrimary = 'inline-flex h-9 items-center gap-2 rounded-md bg-primary px-3 text-sm font-medium text-primary-foreground shadow transition-colors hover:bg-primary/90 disabled:opacity-50';
 
 export function SettingsClient() {
     const { data: sitesData, mutate: mutateSites } = useSWR('/sites', fetcher);
@@ -38,7 +42,6 @@ export function SettingsClient() {
     const [discovery, setDiscovery] = useState<Discovery | null>(null);
     const [pending, setPending] = useState<Record<number, { ga4?: string | null; gsc?: string | null }>>({});
     const [busy, setBusy] = useState<string | null>(null);
-    const [notice, setNotice] = useState<string | null>(null);
 
     const [deleteTarget, setDeleteTarget] = useState<any | null>(null);
     const [editTarget, setEditTarget] = useState<EditableSite | null>(null);
@@ -49,12 +52,11 @@ export function SettingsClient() {
 
     const act = async (key: string, fn: () => Promise<unknown>, done?: string) => {
         setBusy(key);
-        setNotice(null);
         try {
             await fn();
-            if (done) setNotice(done);
+            if (done) toast.success(done);
         } catch (e) {
-            setNotice(`✗ ${(e as Error).message}`);
+            toast.error((e as Error).message);
         } finally {
             setBusy(null);
         }
@@ -69,7 +71,7 @@ export function SettingsClient() {
         const res: any = await deleteJson(`/sites/${deleteTarget.id}`);
         setDeleteTarget(null);
         await mutateSites();
-        setNotice(res?.message || '✓ Sitio eliminado');
+        toast.success(res?.message || '✓ Sitio eliminado');
     });
 
     const applySuggestions = () => {
@@ -121,8 +123,6 @@ export function SettingsClient() {
                 <p className="text-sm text-muted-foreground">Mapeo de propiedades, cuenta de Google y corridas del ETL.</p>
             </div>
 
-            {notice && <p className="rounded-md border bg-background px-3 py-2 text-sm">{notice}</p>}
-
             {revoked && (
                 <Card className="border-destructive/40">
                     <CardContent className="flex items-center gap-3 p-4">
@@ -145,7 +145,7 @@ export function SettingsClient() {
                         </CardDescription>
                     </div>
                     <div className="flex gap-2">
-                        <NewSiteDialog onCreated={() => { setNotice('✓ Sitio agregado'); mutateSites(); }} />
+                        <NewSiteDialog onCreated={() => { toast.success('Sitio agregado'); mutateSites(); }} />
                         <button className={btn} onClick={loadDiscovery} disabled={busy !== null}>
                             {busy === 'discovery' ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
                             Buscar en Google
@@ -328,7 +328,7 @@ export function SettingsClient() {
                                     </TableCell>
                                     <TableCell>
                                         {run.status === 'running' && <Badge variant="secondary"><Loader2 className="mr-1 h-3 w-3 animate-spin" />corriendo</Badge>}
-                                        {run.status === 'success' && <Badge className="bg-emerald-600 hover:bg-emerald-600"><CheckCircle2 className="mr-1 h-3 w-3" />ok</Badge>}
+                                        {run.status === 'success' && <Badge variant="success"><CheckCircle2 className="mr-1 h-3 w-3" />ok</Badge>}
                                         {run.status === 'partial' && <Badge variant="secondary"><AlertTriangle className="mr-1 h-3 w-3" />parcial</Badge>}
                                         {run.status === 'error' && <Badge variant="destructive"><XCircle className="mr-1 h-3 w-3" />error</Badge>}
                                     </TableCell>
@@ -346,34 +346,30 @@ export function SettingsClient() {
             <EditSiteDialog
                 site={editTarget}
                 onOpenChange={(o) => !o && setEditTarget(null)}
-                onSaved={(msg) => { setNotice(msg); setEditTarget(null); mutateSites(); }}
+                onSaved={(msg) => { toast.success(msg); setEditTarget(null); mutateSites(); }}
             />
 
-            <Dialog open={!!deleteTarget} onOpenChange={(o) => !o && setDeleteTarget(null)}>
-                <DialogContent>
-                    <DialogHeader>
-                        <DialogTitle>Eliminar sitio</DialogTitle>
-                        <DialogDescription>
-                            {deleteTarget && (
+            <AlertDialog open={!!deleteTarget} onOpenChange={(o) => !o && setDeleteTarget(null)}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Eliminar sitio</AlertDialogTitle>
+                        <AlertDialogDescription>{deleteTarget && (
                                 <>¿Seguro que querés eliminar <span className="font-medium text-foreground">{deleteTarget.name}</span> ({deleteTarget.domain})? Si ya tiene métricas cargadas, se desactivará en lugar de borrarse para no perder el histórico.</>
-                            )}
-                        </DialogDescription>
-                    </DialogHeader>
-                    <DialogFooter>
-                        <button className={btn} onClick={() => setDeleteTarget(null)} disabled={busy !== null}>
-                            Cancelar
-                        </button>
-                        <button
-                            className="inline-flex h-9 items-center gap-2 rounded-md bg-destructive px-3 text-sm font-medium text-destructive-foreground shadow transition-colors hover:bg-destructive/90 disabled:opacity-50"
-                            onClick={removeSite}
+                            )}</AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel disabled={busy !== null}>Cancelar</AlertDialogCancel>
+                        <AlertDialogAction
+                            className={btnDestructive}
+                            onClick={(e) => { e.preventDefault(); removeSite(); }}
                             disabled={busy !== null}
                         >
-                            {busy === 'delete' && <Loader2 className="h-4 w-4 animate-spin" />}
+                            {busy === 'delete' && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                             Eliminar
-                        </button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </div>
     );
 }

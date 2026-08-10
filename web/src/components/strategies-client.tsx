@@ -25,7 +25,7 @@ type Opportunity = {
 const levelBadge = (level: string) =>
     level === 'critical'
         ? <Badge variant="destructive">crítico</Badge>
-        : <Badge variant="secondary" className="bg-amber-500/15 text-amber-700 hover:bg-amber-500/15 dark:text-amber-400">atención</Badge>;
+        : <Badge variant="warning">atención</Badge>;
 
 export function StrategiesClient() {
     const { data: health, isLoading: loadingHealth } = useSWR('/insights/health', fetcher, { revalidateOnFocus: false });
@@ -54,7 +54,7 @@ export function StrategiesClient() {
             <section className="flex flex-col gap-3">
                 <div className="flex items-center gap-2">
                     <Target className="h-4 w-4 text-muted-foreground" />
-                    <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+                    <h2 className="font-display text-sm font-semibold text-foreground">
                         Prioridades ahora
                     </h2>
                 </div>
@@ -76,7 +76,7 @@ export function StrategiesClient() {
                             </CardHeader>
                             <CardContent className="flex flex-col gap-3">
                                 {alerts.length === 0 && (
-                                    <p className="text-sm text-muted-foreground">Sin alertas: todo el portfolio está OK. 🎉</p>
+                                    <p className="text-sm text-muted-foreground">Sin alertas: todo el portfolio está OK.</p>
                                 )}
                                 {alerts.slice(0, 6).map((s) => (
                                     <div key={s.id} className="flex flex-col gap-1 border-b pb-2 last:border-0 last:pb-0">
@@ -144,34 +144,34 @@ export function StrategiesClient() {
             <section className="flex flex-col gap-3">
                 <div className="flex items-center gap-2">
                     <Lightbulb className="h-4 w-4 text-muted-foreground" />
-                    <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+                    <h2 className="font-display text-sm font-semibold text-foreground">
                         Playbook de posicionamiento
                     </h2>
                 </div>
-                <div className="grid gap-3 md:grid-cols-2">
+                {/*
+                  * Narrativa seccionada, no grilla de cards. Son seis estrategias
+                  * comparables: en cajas iguales, ninguna manda y la lista no se puede
+                  * leer de corrido. Acá el título hace la jerarquía y la regla separa,
+                  * que es el trabajo que la card estaba fingiendo hacer.
+                  */}
+                <div className="flex flex-col">
                     {STRATEGIES.map((s) => (
-                        <Card key={s.slug} className="flex flex-col">
-                            <CardHeader className="pb-3">
-                                <CardTitle className="text-base">{s.title}</CardTitle>
-                                <CardDescription>{s.goal}</CardDescription>
-                            </CardHeader>
-                            <CardContent className="flex flex-1 flex-col gap-3">
-                                <ol className="flex flex-col gap-1.5">
-                                    {s.steps.map((step, i) => (
-                                        <li key={i} className="flex gap-2 text-sm text-muted-foreground">
-                                            <span className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-muted text-[10px] font-semibold text-foreground">
-                                                {i + 1}
-                                            </span>
-                                            {step}
-                                        </li>
-                                    ))}
-                                </ol>
+                        <article
+                            key={s.slug}
+                            className="border-b py-6 last:border-0 md:grid md:grid-cols-[minmax(0,20rem)_1fr] md:gap-10"
+                        >
+                            <div>
+                                <h3 className="font-display text-lg font-medium">{s.title}</h3>
+                                <p className="mt-1 max-w-[42ch] text-sm text-muted-foreground">{s.goal}</p>
                                 {s.watch && s.watch.length > 0 && (
-                                    <div className="mt-auto flex flex-wrap items-center gap-1.5 border-t pt-3 text-xs text-muted-foreground">
-                                        <span>Mirá:</span>
+                                    <div className="mt-3 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
+                                        <span>Se ve en</span>
                                         {s.watch.map((slug) => (
                                             <span key={slug} className="inline-flex items-center gap-0.5">
-                                                <Link href={`/glosario#${slug}`} className="rounded bg-muted px-1.5 py-0.5 hover:text-foreground">
+                                                <Link
+                                                    href={`/glosario#${slug}`}
+                                                    className="underline decoration-border underline-offset-4 hover:text-foreground"
+                                                >
                                                     {slug}
                                                 </Link>
                                                 <InfoTip term={slug} />
@@ -179,8 +179,17 @@ export function StrategiesClient() {
                                         ))}
                                     </div>
                                 )}
-                            </CardContent>
-                        </Card>
+                            </div>
+
+                            <ul className="mt-4 flex max-w-[68ch] flex-col gap-2 md:mt-0">
+                                {s.steps.map((step, i) => (
+                                    <li key={i} className="flex gap-2.5 text-sm text-muted-foreground">
+                                        <span aria-hidden className="mt-2.5 h-px w-3 shrink-0 bg-border" />
+                                        {step}
+                                    </li>
+                                ))}
+                            </ul>
+                        </article>
                     ))}
                 </div>
                 <p className="text-xs text-muted-foreground">

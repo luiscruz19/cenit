@@ -3,7 +3,7 @@
 import useSWR from 'swr';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
-import { ArrowLeft, ExternalLink } from 'lucide-react';
+import { ArrowLeft, ExternalLink, Download, Table2, Settings } from 'lucide-react';
 import { fetcher } from '@/lib/fetcher';
 import { parsePeriod } from '@/lib/periods';
 import {
@@ -12,6 +12,10 @@ import {
 import { PeriodSelector } from '@/components/period-selector';
 import { KpiStat } from '@/components/kpi-stat';
 import { SiteHealthCard, SiteActionPlan } from '@/components/site-insights';
+import { SiteMeta } from '@/components/site-meta';
+import { SiteClarity } from '@/components/site-clarity';
+import { SiteRankings } from '@/components/site-rankings';
+import { SiteAlerts } from '@/components/site-alerts';
 import { TimeSeriesChart } from '@/components/charts/time-series-chart';
 import { MonthlyTrendChart } from '@/components/charts/monthly-trend-chart';
 import { ChannelBarChart } from '@/components/charts/channel-bar-chart';
@@ -23,6 +27,18 @@ import {
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
+import { btn } from '@/lib/ui';
+
+
+/** Encabezado de sección, para que la página larga siga siendo navegable. */
+function Section({ title, hint }: { title: string; hint?: string }) {
+    return (
+        <div className="flex items-baseline gap-2 pt-2">
+            <h2 className="font-display text-sm font-semibold text-foreground">{title}</h2>
+            {hint && <span className="text-xs text-muted-foreground">· {hint}</span>}
+        </div>
+    );
+}
 
 export function SiteDetailClient({ siteId }: { siteId: string }) {
     const period = parsePeriod(useSearchParams().get('period'));
@@ -60,39 +76,82 @@ export function SiteDetailClient({ siteId }: { siteId: string }) {
                         </h1>
                         <p className="text-sm text-muted-foreground">
                             {site?.domain}
-                            {range && <> · {formatDate(range.from)} – {formatDate(range.to)}</>}
+                            {range && <> · {formatDate(range.from)} – {formatDate(range.to)} · vs período anterior</>}
                         </p>
                     </div>
                 </div>
-                <PeriodSelector />
+                <div className="flex flex-wrap items-center gap-2">
+                    {/* El PDF se arma al vuelo: no hace falta crear un reporte guardado. */}
+                    <a
+                        className={btn}
+                        href={`/api/proxy/reports/site/${siteId}/pdf?period=${period}`}
+                        target="_blank"
+                        rel="noreferrer"
+                    >
+                        <Download className="h-4 w-4" />
+                        PDF
+                    </a>
+                    <Link className={btn} href="/explorer">
+                        <Table2 className="h-4 w-4" />
+                        Explorer
+                    </Link>
+                    <Link className={btn} href="/settings">
+                        <Settings className="h-4 w-4" />
+                        Mapeo
+                    </Link>
+                    <PeriodSelector />
+                </div>
             </div>
 
             {isLoading || !data ? (
                 <>
-                    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
-                        {Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-[86px]" />)}
+                    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                        {Array.from({ length: 8 }).map((_, i) => <Skeleton key={i} className="h-[86px]" />)}
                     </div>
                     <Skeleton className="h-80" />
                 </>
             ) : (
                 <>
-                    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+                    {/* ── Tráfico (GA4) ──────────────────────────────────── */}
+                    <Section title="Tráfico" hint="Google Analytics 4" />
+                    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
                         <KpiStat label="Sesiones" value={formatCompact(kpis.ga?.sessions)} term="sesiones"
                             current={kpis.ga?.sessions} previous={kpis.gaPrev?.sessions} yoy={kpis.gaYoy?.sessions} />
                         <KpiStat label="Usuarios" value={formatCompact(kpis.ga?.users)} term="usuarios"
                             current={kpis.ga?.users} previous={kpis.gaPrev?.users} yoy={kpis.gaYoy?.users} />
+                        <KpiStat label="Usuarios nuevos" value={formatCompact(kpis.ga?.newUsers)} term="usuarios"
+                            current={kpis.ga?.newUsers} previous={kpis.gaPrev?.newUsers} yoy={kpis.gaYoy?.newUsers} />
+                        <KpiStat label="Vistas de página" value={formatCompact(kpis.ga?.pageViews)} term="vistas"
+                            current={kpis.ga?.pageViews} previous={kpis.gaPrev?.pageViews} yoy={kpis.gaYoy?.pageViews} />
                         <KpiStat label="Interacción" value={formatPct(kpis.ga?.engagementRate)} term="engagement-rate"
                             current={kpis.ga?.engagementRate} previous={kpis.gaPrev?.engagementRate} />
                         <KpiStat label="Duración media" value={formatDuration(kpis.ga?.avgSessionDuration)}
                             current={kpis.ga?.avgSessionDuration} previous={kpis.gaPrev?.avgSessionDuration} />
+                        <KpiStat label="Eventos clave" value={formatCompact(kpis.ga?.keyEvents)}
+                            current={kpis.ga?.keyEvents} previous={kpis.gaPrev?.keyEvents} yoy={kpis.gaYoy?.keyEvents} />
+                    </div>
+
+                    {/* ── Búsqueda (GSC) ─────────────────────────────────── */}
+                    <Section title="Búsqueda" hint="Search Console · datos con ~3 días de retraso" />
+                    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
                         <KpiStat label="Clicks" value={formatCompact(kpis.gsc?.clicks)} term="clicks"
                             current={kpis.gsc?.clicks} previous={kpis.gscPrev?.clicks} yoy={kpis.gscYoy?.clicks} />
+                        <KpiStat label="Impresiones" value={formatCompact(kpis.gsc?.impressions)} term="impresiones"
+                            current={kpis.gsc?.impressions} previous={kpis.gscPrev?.impressions} yoy={kpis.gscYoy?.impressions} />
+                        <KpiStat label="CTR" value={formatPct(kpis.gsc?.ctr)} term="ctr"
+                            current={kpis.gsc?.ctr} previous={kpis.gscPrev?.ctr} />
                         <KpiStat label="Posición media" value={formatPosition(kpis.gsc?.position)} term="posicion"
                             current={kpis.gsc?.position} previous={kpis.gscPrev?.position} invert />
                     </div>
 
+                    {/* ── Diagnóstico ────────────────────────────────────── */}
+                    <Section title="Diagnóstico" />
                     <SiteHealthCard siteId={siteId} />
+                    <SiteClarity siteId={siteId} period={period} />
+                    <SiteMeta siteId={siteId} period={period} />
 
+                    {/* ── Evolución ──────────────────────────────────────── */}
+                    <Section title="Evolución" />
                     <Card>
                         <CardHeader className="pb-2">
                             <Tabs defaultValue="ga4">
@@ -164,6 +223,12 @@ export function SiteDetailClient({ siteId }: { siteId: string }) {
                         </Card>
                     </div>
 
+                    {/* ── Posicionamiento ────────────────────────────────── */}
+                    <Section title="Posicionamiento" />
+                    <SiteRankings siteId={siteId} period={period} />
+
+                    {/* ── Contenido ──────────────────────────────────────── */}
+                    <Section title="Contenido" hint="lo que más tracciona" />
                     <Card>
                         <CardHeader className="pb-0">
                             <Tabs defaultValue="ga-pages">
@@ -245,7 +310,10 @@ export function SiteDetailClient({ siteId }: { siteId: string }) {
                         <CardContent />
                     </Card>
 
-                    <SiteActionPlan siteId={siteId} />
+                    {/* ── Qué hacer ──────────────────────────────────────── */}
+                    <Section title="Qué hacer" />
+                    <SiteAlerts siteId={siteId} />
+                    <SiteActionPlan siteId={siteId} period={period} />
 
                     {(!site?.mapped?.ga4 || !site?.mapped?.gsc) && (
                         <p className="text-sm text-muted-foreground">

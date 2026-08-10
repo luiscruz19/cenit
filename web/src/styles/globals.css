@@ -2,34 +2,62 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Paleta shadcn/ui base zinc (light-only por ahora). */
+/**
+ * Sistema de diseño de Cenit.
+ *
+ * NO son los defaults de shadcn. Cenit es un instrumento de medición, y el sistema lo
+ * refleja: neutros fríos (nunca el gris zinc de fábrica), un solo acento fuerte —un
+ * petróleo profundo— y radios chicos, porque lo redondeado lee blando y esto tiene que
+ * leer preciso.
+ *
+ * El color semántico (ok / atención / crítico) vive aparte del acento a propósito: son
+ * dos lenguajes distintos y mezclarlos hace que el estado deje de saltar a la vista.
+ *
+ * Light-only, y es una decisión: el dashboard se mira de día, contra planillas y con
+ * proyector. No hay dark mode a medio hacer.
+ */
 @layer base {
     :root {
-        --background: 0 0% 100%;
-        --foreground: 240 10% 3.9%;
+        /* Neutros con sesgo frío: el gris fue elegido, no heredado. */
+        --background: 200 20% 98%;
+        --foreground: 205 28% 12%;
         --card: 0 0% 100%;
-        --card-foreground: 240 10% 3.9%;
+        --card-foreground: 205 28% 12%;
         --popover: 0 0% 100%;
-        --popover-foreground: 240 10% 3.9%;
-        --primary: 240 5.9% 10%;
-        --primary-foreground: 0 0% 98%;
-        --secondary: 240 4.8% 95.9%;
-        --secondary-foreground: 240 5.9% 10%;
-        --muted: 240 4.8% 95.9%;
-        --muted-foreground: 240 3.8% 46.1%;
-        --accent: 240 4.8% 95.9%;
-        --accent-foreground: 240 5.9% 10%;
-        --destructive: 0 84.2% 60.2%;
-        --destructive-foreground: 0 0% 98%;
-        --border: 240 5.9% 90%;
-        --input: 240 5.9% 90%;
-        --ring: 240 10% 3.9%;
-        --radius: 0.5rem;
-        --chart-1: 221 83% 53%;
-        --chart-2: 160 60% 45%;
-        --chart-3: 30 80% 55%;
-        --chart-4: 280 65% 60%;
-        --chart-5: 340 75% 55%;
+        --popover-foreground: 205 28% 12%;
+
+        /* Acento: petróleo profundo. Contrasta contra el fondo frío sin gritar. */
+        --primary: 190 78% 20%;
+        --primary-foreground: 190 30% 97%;
+
+        --secondary: 200 18% 93%;
+        --secondary-foreground: 205 28% 18%;
+        --muted: 200 18% 94%;
+        --muted-foreground: 205 12% 42%;
+        --accent: 200 18% 93%;
+        --accent-foreground: 205 28% 18%;
+
+        /* Rojo de arcilla, no rojo semáforo: avisa sin estridencia. */
+        --destructive: 6 62% 46%;
+        --destructive-foreground: 10 30% 98%;
+
+        --border: 205 16% 88%;
+        --input: 205 16% 86%;
+        --ring: 190 78% 20%;
+
+        /* Radio base chico. La escala la deriva tailwind.config (sm/md/lg). */
+        --radius: 0.25rem;
+
+        /*
+         * Serie de gráficos propia, no los 5 hexes de fábrica. Empieza en el acento y
+         * se aleja en tono y temperatura, para que las series se distingan también en
+         * escala de grises y para quien no distingue rojo/verde.
+         */
+        --chart-1: 190 70% 30%;   /* petróleo */
+        --chart-2: 38 62% 50%;    /* ocre */
+        --chart-3: 215 30% 46%;   /* pizarra */
+        --chart-4: 12 52% 52%;    /* arcilla */
+        --chart-5: 152 26% 38%;   /* musgo */
     }
 }
 
@@ -37,7 +65,24 @@
     * {
         @apply border-border;
     }
+
     body {
         @apply bg-background text-foreground;
+        font-feature-settings: 'ss01', 'cv01';
+    }
+
+    /* Los títulos van en la display; el cuerpo, en la de texto. */
+    h1, h2, h3 {
+        font-family: var(--font-display), system-ui, sans-serif;
+        letter-spacing: -0.015em;
+    }
+
+    /*
+     * Todo dígito que viva en una columna se alinea. En una herramienta de datos esto
+     * no es cosmético: sin figuras tabulares, las cifras bailan y la tabla no se puede
+     * escanear de un vistazo.
+     */
+    table, .tabular-nums, [class*='tabular'] {
+        font-variant-numeric: tabular-nums;
     }
 }

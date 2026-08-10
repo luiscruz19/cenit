@@ -38,6 +38,17 @@ const Site = sequelize.define('sites', {
         type: DataTypes.STRING(255),
         allowNull: true,
     },
+    // ID del proyecto de Microsoft Clarity (para el deep-link al panel: grabaciones y heatmaps).
+    clarity_project_id: {
+        type: DataTypes.STRING(40),
+        allowNull: true,
+    },
+    // Token de la Data Export API de Clarity, cifrado con AES-256-GCM (mismo esquema que
+    // el refresh token de Google). Es por-proyecto: cada sitio tiene el suyo. Nunca en claro.
+    clarity_api_token_enc: {
+        type: DataTypes.TEXT,
+        allowNull: true,
+    },
     is_active: {
         type: DataTypes.BOOLEAN,
         allowNull: false,
