@@ -8,6 +8,7 @@ import {
     TrendingUp, Table2, Link2, Wrench, ChevronDown, Bell, FileText, LayoutDashboard, FolderOpen,
 } from 'lucide-react';
 import { fetcher } from '@/lib/fetcher';
+import { resolveCurrentSite, storeSite } from '@/lib/current-site';
 import { cn } from '@/utils/shadcn';
 import {
     DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
@@ -47,14 +48,17 @@ export function Nav() {
     const critical = health?.summary?.critical || 0;
 
     const sites = (sitesData?.sites || []).filter((s: any) => s.is_active);
-    // El proyecto activo se toma de la URL: /sites/:id, o el ?site= de las pantallas analíticas.
-    const currentSiteId = (params?.id as string) || searchParams.get('site') || '';
     const period = searchParams.get('period') || '28d';
+    // Proyecto actual: URL (/sites/:id o ?site=) → guardado → primero. Nunca "todos".
+    const currentSiteId = resolveCurrentSite(
+        sites,
+        (params?.id as string) || searchParams.get('site'),
+    ) || '';
 
-    // Al elegir un proyecto, se va a su vista completa (el detalle es el "todo por proyecto").
+    // Persistir la elección para volver siempre al mismo proyecto, e ir a su vista completa.
     const onPickSite = (value: string) => {
-        if (value === '__all__') router.push('/');
-        else router.push(`/sites/${value}?period=${period}`);
+        storeSite(value);
+        router.push(`/sites/${value}?period=${period}`);
     };
 
     const toolsActive = TOOLS.some((t) => pathname.startsWith(t.href));
@@ -71,15 +75,14 @@ export function Nav() {
                     Cenit
                 </Link>
 
-                {/* Selector de proyecto: la lente principal. Elegís un proyecto y vas a su vista completa. */}
+                {/* Selector de proyecto: la app vive siempre dentro de uno. No hay opción "todos". */}
                 {sites.length > 0 && (
-                    <Select value={currentSiteId || '__all__'} onValueChange={onPickSite}>
-                        <SelectTrigger className="h-8 w-[150px] gap-1.5 border-dashed text-sm sm:w-[190px]">
+                    <Select value={currentSiteId} onValueChange={onPickSite}>
+                        <SelectTrigger className="h-8 w-[150px] gap-1.5 text-sm sm:w-[200px]">
                             <FolderOpen className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
                             <SelectValue placeholder="Proyecto…" />
                         </SelectTrigger>
                         <SelectContent>
-                            <SelectItem value="__all__">Todos los proyectos</SelectItem>
                             {sites.map((s: any) => (
                                 <SelectItem key={s.id} value={String(s.id)}>{s.name}</SelectItem>
                             ))}
@@ -89,8 +92,8 @@ export function Nav() {
 
                 <nav className="flex items-center gap-0.5">
                     {LINKS.map(({ href, label, icon: Icon, match }) => {
-                        // Con un proyecto activo, las pantallas analíticas se abren ya filtradas a él.
-                        const scopeable = ['/rankings', '/oportunidades'].includes(href);
+                        // Cada pantalla analítica se abre filtrada al proyecto activo.
+                        const scopeable = ['/rankings', '/oportunidades', '/salud'].includes(href);
                         const to = currentSiteId && scopeable ? `${href}?site=${currentSiteId}` : href;
                         return (
                         <Link key={href} href={to} className={linkClass(match(pathname))}>

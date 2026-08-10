@@ -1,10 +1,10 @@
 import { Suspense } from 'react';
-import { OverviewClient } from '@/components/overview-client';
+import { HomeGate } from '@/components/home-gate';
 
-export default function OverviewPage() {
+export default function HomePage() {
     return (
         <Suspense>
-            <OverviewClient />
+            <HomeGate />
         </Suspense>
     );
 }

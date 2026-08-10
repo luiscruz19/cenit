@@ -2,12 +2,14 @@
 
 import useSWR from 'swr';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import { ShieldAlert, AlertTriangle, CheckCircle2, ArrowUpRight } from 'lucide-react';
 import { fetcher } from '@/lib/fetcher';
 import { formatNumber, formatDate } from '@/lib/format';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
+import { ErrorState } from '@/components/ui/states';
 import { cn } from '@/utils/shadcn';
 
 type Reason = { code: string; label: string };
@@ -73,30 +75,40 @@ function SiteRow({ item }: { item: Item }) {
 }
 
 export function HealthClient() {
-    const { data, isLoading, error } = useSWR('/insights/health', fetcher);
-    const items: Item[] = data?.items || [];
+    const siteId = useSearchParams().get('site');
+    const { data, isLoading, error, mutate } = useSWR('/insights/health', fetcher);
+    // Siempre por proyecto: si viene ?site=, se muestra solo ese; si no, todo el portfolio.
+    const allItems: Item[] = data?.items || [];
+    const items: Item[] = siteId ? allItems.filter((i) => String(i.id) === siteId) : allItems;
     const problems = items.filter((i) => i.level !== 'ok');
     const healthy = items.filter((i) => i.level === 'ok');
+    // Resumen calculado sobre lo que se muestra (así respeta el filtro por proyecto).
+    const summary = {
+        critical: items.filter((i) => i.level === 'critical').length,
+        warning: items.filter((i) => i.level === 'warning').length,
+        ok: healthy.length,
+    };
+    const scopedName = siteId ? (items[0]?.name || null) : null;
 
     return (
         <div className="flex flex-col gap-6">
             <div>
-                <h1 className="text-xl font-semibold tracking-tight">Salud del portfolio</h1>
+                <h1 className="text-xl font-semibold tracking-tight">Salud{scopedName ? ` · ${scopedName}` : " del portfolio"}</h1>
                 <p className="text-sm text-muted-foreground">
                     Alertas automáticas: tag sin instalar, tráfico caído a cero, sin acceso a Search Console, caídas fuertes y tráfico de baja calidad.
                 </p>
             </div>
 
-            {error && <p className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">{String((error as Error).message)}</p>}
+            {error && <ErrorState message={(error as Error).message} onRetry={() => mutate()} />}
 
             {isLoading ? (
                 <div className="grid gap-4 sm:grid-cols-3">{Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-20" />)}</div>
             ) : (
                 <>
                     <div className="grid gap-4 sm:grid-cols-3">
-                        <SummaryCard level="critical" count={data.summary.critical} />
-                        <SummaryCard level="warning" count={data.summary.warning} />
-                        <SummaryCard level="ok" count={data.summary.ok} />
+                        <SummaryCard level="critical" count={summary.critical} />
+                        <SummaryCard level="warning" count={summary.warning} />
+                        <SummaryCard level="ok" count={summary.ok} />
                     </div>
 
                     {problems.length > 0 && (

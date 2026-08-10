@@ -16,6 +16,7 @@ import { SiteMeta } from '@/components/site-meta';
 import { SiteClarity } from '@/components/site-clarity';
 import { SiteSummary } from '@/components/site-summary';
 import { SiteGeography } from '@/components/site-geography';
+import { SiteConversionsGuide } from '@/components/site-conversions-guide';
 import { SiteRankings } from '@/components/site-rankings';
 import { ErrorState } from '@/components/ui/states';
 import { SiteAlerts } from '@/components/site-alerts';
@@ -23,7 +24,7 @@ import { TimeSeriesChart } from '@/components/charts/time-series-chart';
 import { MonthlyTrendChart } from '@/components/charts/monthly-trend-chart';
 import { ChannelBarChart } from '@/components/charts/channel-bar-chart';
 import { DeviceDonut } from '@/components/charts/device-donut';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
     Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
@@ -234,15 +235,17 @@ export function SiteDetailClient({ siteId }: { siteId: string }) {
                     <Section title="Resultados" hint="eventos clave configurados en GA4" />
                     <Card>
                         <CardHeader className="pb-2">
-                            <CardTitle className="text-base">Conversiones por tipo</CardTitle>
+                            <CardTitle className="text-base">
+                                {(data.events || []).length ? 'Conversiones por tipo' : 'Todavía no medís conversiones'}
+                            </CardTitle>
+                            <CardDescription>
+                                {(data.events || []).length
+                                    ? 'Eventos clave que registró este sitio en el período.'
+                                    : 'Sin eventos clave configurados en GA4. Estas son las conversiones que conviene medir en este sitio y cómo activarlas.'}
+                            </CardDescription>
                         </CardHeader>
-                        <CardContent>
-                            {(data.events || []).length === 0 ? (
-                                <p className="text-sm text-muted-foreground">
-                                    Este sitio no tiene eventos clave configurados en GA4, o no hubo conversiones en el período.
-                                    Definí qué es una conversión (formulario, WhatsApp, compra) y marcala como evento clave para verla acá.
-                                </p>
-                            ) : (
+                        <CardContent className="flex flex-col gap-5">
+                            {(data.events || []).length > 0 && (
                                 <Table>
                                     <TableHeader>
                                         <TableRow>
@@ -260,6 +263,10 @@ export function SiteDetailClient({ siteId }: { siteId: string }) {
                                     </TableBody>
                                 </Table>
                             )}
+                            <SiteConversionsGuide
+                                domain={site?.domain || ''}
+                                existingEvents={data.events || []}
+                            />
                         </CardContent>
                     </Card>
 

@@ -1,11 +1,12 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import useSWR from 'swr';
 import { useSearchParams } from 'next/navigation';
 import { Search, ArrowUp, ArrowDown, Minus, LineChart } from 'lucide-react';
 import { fetcher } from '@/lib/fetcher';
 import { parsePeriod } from '@/lib/periods';
+import { resolveCurrentSite, storeSite } from '@/lib/current-site';
 import { formatDate, formatNumber, formatPct, formatPosition } from '@/lib/format';
 import { cn } from '@/utils/shadcn';
 import { PeriodSelector } from '@/components/period-selector';
@@ -26,7 +27,6 @@ import {
     Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table';
 
-const ALL = '__all__';
 
 const BUCKETS = [
     { value: 'all', label: 'Todas' },
@@ -83,8 +83,8 @@ function Stat({ label, value, hint, term }: { label: string; value: string; hint
 export function RankingsClient() {
     const searchParams = useSearchParams();
     const period = parsePeriod(searchParams.get('period'));
-    // Arranca filtrado al proyecto activo si se llegó con ?site= desde el selector del nav.
-    const [siteId, setSiteId] = useState<string>(searchParams.get('site') || ALL);
+    // Siempre por proyecto: arranca en el proyecto activo (URL → guardado → primero).
+    const [siteId, setSiteId] = useState<string>('');
     const [bucket, setBucket] = useState<string>('all');
     const [search, setSearch] = useState('');
     const [detail, setDetail] = useState<Row | null>(null);
@@ -92,14 +92,25 @@ export function RankingsClient() {
     const { data: sitesData } = useSWR('/sites', fetcher);
     const sites = (sitesData?.sites || []).filter((s: any) => s.is_active && s.gsc_site_url);
 
+    // Resuelve el proyecto una vez que cargan los sitios, si todavía no hay uno elegido.
+    useEffect(() => {
+        if (!siteId && sites.length) {
+            setSiteId(resolveCurrentSite(sites, searchParams.get('site')) || '');
+        }
+    }, [sites, siteId, searchParams]);
+
+    const onPickSite = (v: string) => { setSiteId(v); storeSite(v); };
+
     const qs = new URLSearchParams({ period, limit: '200' });
-    if (siteId !== ALL) qs.set('siteId', siteId);
+    if (siteId) qs.set('siteId', siteId);
     if (bucket !== 'all') qs.set('bucket', bucket);
     if (search.trim()) qs.set('search', search.trim());
 
-    const { data, isLoading, error, mutate } = useSWR(`/insights/rankings?${qs}`, fetcher, {
-        keepPreviousData: true,
-    });
+    const { data, isLoading, error, mutate } = useSWR(
+        siteId ? `/insights/rankings?${qs}` : null,
+        fetcher,
+        { keepPreviousData: true },
+    );
 
     // El histórico se pide solo cuando abrís una consulta.
     const { data: history } = useSWR(
@@ -159,10 +170,9 @@ export function RankingsClient() {
                             />
                         </div>
 
-                        <Select value={siteId} onValueChange={setSiteId}>
+                        <Select value={siteId} onValueChange={onPickSite}>
                             <SelectTrigger className="w-56"><SelectValue /></SelectTrigger>
                             <SelectContent>
-                                <SelectItem value={ALL}>Todos los sitios</SelectItem>
                                 {sites.map((site: any) => (
                                     <SelectItem key={site.id} value={String(site.id)}>{site.name}</SelectItem>
                                 ))}
@@ -192,7 +202,6 @@ export function RankingsClient() {
                             <TableHeader>
                                 <TableRow>
                                     <TableHead>Consulta</TableHead>
-                                    {siteId === ALL && <TableHead>Sitio</TableHead>}
                                     <TableHead className="text-right">Posición</TableHead>
                                     <TableHead className="text-right">Cambio</TableHead>
                                     <TableHead className="text-right">Mejor / peor</TableHead>
@@ -205,7 +214,7 @@ export function RankingsClient() {
                             <TableBody>
                                 {items.length === 0 && (
                                     <TableRow>
-                                        <TableCell colSpan={9} className="py-10 text-center text-sm text-muted-foreground">
+                                        <TableCell colSpan={8} className="py-10 text-center text-sm text-muted-foreground">
                                             No hay consultas con impresiones en este período y filtro.
                                         </TableCell>
                                     </TableRow>
@@ -215,11 +224,6 @@ export function RankingsClient() {
                                         <TableCell className="max-w-xs truncate font-medium" title={r.query}>
                                             {r.query}
                                         </TableCell>
-                                        {siteId === ALL && (
-                                            <TableCell className="whitespace-nowrap text-xs text-muted-foreground">
-                                                {r.site}
-                                            </TableCell>
-                                        )}
                                         <TableCell className="text-right">
                                             <Badge variant="outline" className="tabular-nums font-normal">
                                                 {formatPosition(r.position)}
