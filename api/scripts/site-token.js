@@ -38,7 +38,9 @@ if (accion === 'crear') {
         const actual = fs.existsSync(destino.archivo) ? fs.readFileSync(destino.archivo, 'utf8') : '';
         const linea = `${destino.variable}=${token}`;
         const patron = new RegExp(`^${destino.variable}=.*$`, 'm');
-        fs.writeFileSync(destino.archivo, patron.test(actual) ? actual.replace(patron, linea) : `${actual.replace(/\n?$/, '\n')}${linea}\n`);
+        // Archivo nuevo o vacío: solo la línea (sin una línea en blanco adelante).
+        const resto = actual && !actual.endsWith('\n') ? `${actual}\n` : actual;
+        fs.writeFileSync(destino.archivo, patron.test(actual) ? actual.replace(patron, linea) : `${resto}${linea}\n`);
         await salir(0, `Token #${fila.id} de ${dominio} guardado en ${destino.archivo} (${destino.variable}).`);
     }
     await salir(0, `Token #${fila.id} de ${dominio} («${nombre}»). Se muestra solo esta vez:\n${token}`);
