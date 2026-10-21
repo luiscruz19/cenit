@@ -20,10 +20,13 @@ type Metrics = {
 const rate = (metric: string, v: number | null): 'good' | 'ni' | 'poor' | null => {
     if (v === null) return null;
     const t: Record<string, [number, number]> = {
-        lcp: [2500, 4000], inp: [200, 500], cls: [0.1, 0.25], score: [50, 90],
+        lcp: [2500, 4000], inp: [200, 500], cls: [0.1, 0.25],
+        fcp: [1800, 3000], ttfb: [800, 1800], score: [50, 90],
     };
     if (metric === 'score') return v >= 90 ? 'good' : v >= 50 ? 'ni' : 'poor';
-    const [g, p] = t[metric];
+    const range = t[metric];
+    if (!range) return null; // métrica sin umbral definido: sin color, no rompe.
+    const [g, p] = range;
     return v <= g ? 'good' : v <= p ? 'ni' : 'poor';
 };
 

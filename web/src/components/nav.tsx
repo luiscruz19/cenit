@@ -36,6 +36,15 @@ const TOOLS = [
     { href: '/glosario', label: 'Glosario', icon: BookOpen, hint: 'Qué significa cada término' },
 ];
 
+// Toda pantalla con datos vive dentro del proyecto activo: su enlace arrastra ?site=.
+// Excepciones (genéricas, sin datos por sitio): UTM Builder y Glosario.
+const SCOPED_HREFS = new Set([
+    '/salud', '/alertas', '/rankings', '/oportunidades', '/estrategias',
+    '/reportes', '/dashboards', '/explorer',
+]);
+const scopedHref = (href: string, siteId: string) =>
+    siteId && SCOPED_HREFS.has(href) ? `${href}?site=${siteId}` : href;
+
 export function Nav() {
     const pathname = usePathname();
     const params = useParams();
@@ -93,8 +102,7 @@ export function Nav() {
                 <nav className="flex items-center gap-0.5">
                     {LINKS.map(({ href, label, icon: Icon, match }) => {
                         // Cada pantalla analítica se abre filtrada al proyecto activo.
-                        const scopeable = ['/rankings', '/oportunidades', '/salud'].includes(href);
-                        const to = currentSiteId && scopeable ? `${href}?site=${currentSiteId}` : href;
+                        const to = scopedHref(href, currentSiteId);
                         return (
                         <Link key={href} href={to} className={linkClass(match(pathname))}>
                             <Icon className="h-4 w-4" />
@@ -117,7 +125,7 @@ export function Nav() {
                         <DropdownMenuContent align="start" className="w-56">
                             {TOOLS.map(({ href, label, icon: Icon, hint }) => (
                                 <DropdownMenuItem key={href} asChild>
-                                    <Link href={href} className="flex cursor-pointer items-start gap-2">
+                                    <Link href={scopedHref(href, currentSiteId)} className="flex cursor-pointer items-start gap-2">
                                         <Icon className="mt-0.5 h-4 w-4 shrink-0" />
                                         <span className="flex flex-col">
                                             <span className="font-medium">{label}</span>

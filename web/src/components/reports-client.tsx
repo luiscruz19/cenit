@@ -1,11 +1,13 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import useSWR from 'swr';
 import {
     Loader2, Plus, Trash2, Pencil, Download, Send, FileText, AlertTriangle, CheckCircle2, XCircle,
 } from 'lucide-react';
 import { fetcher, postJson, putJson, deleteJson } from '@/lib/fetcher';
+import { resolveCurrentSite } from '@/lib/current-site';
 import { cn } from '@/utils/shadcn';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -27,9 +29,6 @@ import {
     AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 
-const PORTFOLIO = '__portfolio__';
-
-
 const SECTIONS = [
     { key: 'kpis', label: 'KPIs', hint: 'Sesiones, usuarios, clicks…' },
     { key: 'health', label: 'Problemas', hint: 'Alertas de salud' },
@@ -49,7 +48,7 @@ type Report = {
 };
 
 const EMPTY = {
-    name: '', siteId: PORTFOLIO, period: '28d',
+    name: '', siteId: '', period: '28d',
     sections: { kpis: true, health: true, opportunities: true, rankings: true, topPages: true } as Record<string, boolean>,
     scheduleFrequency: 'none', scheduleDay: '1', scheduleHour: '8', recipients: '',
 };
@@ -62,14 +61,29 @@ const scheduleLabel = (r: Report) => {
 };
 
 export function ReportsClient() {
+    const searchParams = useSearchParams();
     const { data, mutate } = useSWR('/reports', fetcher);
     const { data: sendsData, mutate: mutateSends } = useSWR('/reports/sends?limit=30', fetcher);
     const { data: sitesData } = useSWR('/sites', fetcher);
 
-    const reports: Report[] = data?.reports || [];
     const mailConfigured = data?.mailConfigured;
-    const sends = sendsData?.sends || [];
     const sites = (sitesData?.sites || []).filter((s: any) => s.is_active);
+
+    // La pantalla vive dentro del proyecto activo: URL (?site=) → guardado → primero.
+    const [siteId, setSiteId] = useState<string>('');
+    useEffect(() => {
+        if (!siteId && sites.length) {
+            setSiteId(resolveCurrentSite(sites, searchParams.get('site')) || '');
+        }
+    }, [sites, siteId, searchParams]);
+    const siteName = sites.find((s: any) => String(s.id) === siteId)?.name || null;
+
+    // Solo los reportes de este proyecto, y sus envíos.
+    const reports: Report[] = (data?.reports || []).filter(
+        (r: Report) => !siteId || String(r.siteId) === siteId,
+    );
+    const reportIds = new Set(reports.map((r) => r.id));
+    const sends = (sendsData?.sends || []).filter((s: any) => reportIds.has(s.reportId));
 
     const [open, setOpen] = useState(false);
     const [editing, setEditing] = useState<Report | null>(null);
@@ -81,15 +95,15 @@ export function ReportsClient() {
         if (!open) return;
         setForm(editing ? {
             name: editing.name,
-            siteId: editing.siteId ? String(editing.siteId) : PORTFOLIO,
+            siteId: editing.siteId ? String(editing.siteId) : siteId,
             period: editing.period,
             sections: { ...EMPTY.sections, ...(editing.sections || {}) },
             scheduleFrequency: editing.scheduleFrequency,
             scheduleDay: String(editing.scheduleDay),
             scheduleHour: String(editing.scheduleHour),
             recipients: editing.recipients,
-        } : EMPTY);
-    }, [open, editing]);
+        } : { ...EMPTY, siteId });
+    }, [open, editing, siteId]);
 
     const act = async (key: string, fn: () => Promise<unknown>, done?: string) => {
         setBusy(key);
@@ -106,7 +120,7 @@ export function ReportsClient() {
     const save = () => act('save', async () => {
         const payload = {
             name: form.name.trim(),
-            siteId: form.siteId === PORTFOLIO ? null : Number(form.siteId),
+            siteId: form.siteId ? Number(form.siteId) : null,
             period: form.period,
             sections: form.sections,
             scheduleFrequency: form.scheduleFrequency,
@@ -141,9 +155,11 @@ export function ReportsClient() {
         <div className="flex flex-col gap-6">
             <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
-                    <h1 className="text-xl font-semibold tracking-tight">Reportes</h1>
+                    <h1 className="text-xl font-semibold tracking-tight">
+                        Reportes{siteName && <span className="text-muted-foreground"> · {siteName}</span>}
+                    </h1>
                     <p className="text-sm text-muted-foreground">
-                        Un PDF con lo que importa, y que se manda solo cuando toca.
+                        Un PDF de este proyecto con lo que importa, y que se manda solo cuando toca.
                     </p>
                 </div>
                 <button className={btnPrimary} onClick={() => { setEditing(null); setOpen(true); }} disabled={busy !== null}>
@@ -179,7 +195,6 @@ export function ReportsClient() {
                         <TableHeader>
                             <TableRow>
                                 <TableHead>Reporte</TableHead>
-                                <TableHead>Alcance</TableHead>
                                 <TableHead>Programación</TableHead>
                                 <TableHead>Destinatarios</TableHead>
                                 <TableHead className="w-32"></TableHead>
@@ -188,8 +203,8 @@ export function ReportsClient() {
                         <TableBody>
                             {reports.length === 0 && (
                                 <TableRow>
-                                    <TableCell colSpan={5} className="py-10 text-center text-sm text-muted-foreground">
-                                        Todavía no hay reportes. Creá el primero con “Nuevo reporte”.
+                                    <TableCell colSpan={4} className="py-10 text-center text-sm text-muted-foreground">
+                                        Todavía no hay reportes para este proyecto. Creá el primero con “Nuevo reporte”.
                                     </TableCell>
                                 </TableRow>
                             )}
@@ -201,9 +216,6 @@ export function ReportsClient() {
                                             período {r.period}
                                             {r.lastSentAt && ` · último envío ${new Date(r.lastSentAt).toLocaleDateString('es-AR')}`}
                                         </p>
-                                    </TableCell>
-                                    <TableCell className="text-sm">
-                                        {r.siteName || <Badge variant="secondary">Portfolio</Badge>}
                                     </TableCell>
                                     <TableCell className="text-sm text-muted-foreground">
                                         {scheduleLabel(r)}
@@ -342,16 +354,10 @@ export function ReportsClient() {
 
                         <div className="grid gap-3 sm:grid-cols-2">
                             <div className="flex flex-col gap-1.5">
-                                <Label>Alcance</Label>
-                                <Select value={form.siteId} onValueChange={(v) => setForm((f) => ({ ...f, siteId: v }))}>
-                                    <SelectTrigger><SelectValue /></SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value={PORTFOLIO}>Portfolio completo</SelectItem>
-                                        {sites.map((s: any) => (
-                                            <SelectItem key={s.id} value={String(s.id)}>{s.name}</SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
+                                <Label>Proyecto</Label>
+                                <div className="flex h-9 items-center rounded-md border bg-muted/40 px-3 text-sm text-muted-foreground">
+                                    {siteName || '—'}
+                                </div>
                             </div>
                             <div className="flex flex-col gap-1.5">
                                 <Label>Período</Label>

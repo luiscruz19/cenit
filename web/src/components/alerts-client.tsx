@@ -1,12 +1,13 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import useSWR from 'swr';
 import {
     Loader2, Plus, Trash2, Pencil, Play, Bell, BellOff, AlertTriangle, CheckCircle2, Mail,
 } from 'lucide-react';
 import { fetcher, postJson, putJson, deleteJson } from '@/lib/fetcher';
-import { formatNumber } from '@/lib/format';
+import { resolveCurrentSite } from '@/lib/current-site';
 import { cn } from '@/utils/shadcn';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -28,9 +29,6 @@ import {
     AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 
-const ALL_SITES = '__all__';
-
-
 type Rule = {
     id: number; name: string; siteId: number | null; siteName: string | null;
     metric: string; metricLabel: string; operator: string; threshold: number;
@@ -41,7 +39,7 @@ type Rule = {
 type Field = { key: string; label: string; type?: string; needsPrevious?: boolean };
 
 const EMPTY = {
-    name: '', siteId: ALL_SITES, metric: 'sessions', operator: 'drop_pct',
+    name: '', siteId: '', metric: 'sessions', operator: 'drop_pct',
     threshold: '30', windowDays: '7', severity: 'warning', cooldownHours: '24',
     notifyEmails: '',
 };
@@ -55,17 +53,35 @@ const severityBadge = (severity: string) => {
 };
 
 export function AlertsClient() {
+    const searchParams = useSearchParams();
     const { data: schema } = useSWR('/alerts/schema', fetcher, { revalidateOnFocus: false });
     const { data: rulesData, mutate: mutateRules } = useSWR('/alerts/rules', fetcher);
-    const { data: eventsData, mutate: mutateEvents } = useSWR('/alerts/events?limit=50', fetcher);
     const { data: sitesData } = useSWR('/sites', fetcher);
 
     const metrics: Field[] = schema?.metrics || [];
     const operators: Field[] = schema?.operators || [];
     const mailConfigured = schema?.mailConfigured;
-    const rules: Rule[] = rulesData?.rules || [];
-    const events = eventsData?.events || [];
     const sites = (sitesData?.sites || []).filter((s: any) => s.is_active);
+
+    // La pantalla vive dentro del proyecto activo: URL (?site=) → guardado → primero.
+    const [siteId, setSiteId] = useState<string>('');
+    useEffect(() => {
+        if (!siteId && sites.length) {
+            setSiteId(resolveCurrentSite(sites, searchParams.get('site')) || '');
+        }
+    }, [sites, siteId, searchParams]);
+    const siteName = sites.find((s: any) => String(s.id) === siteId)?.name || null;
+
+    // El historial se pide ya filtrado por sitio (el límite no recorta otros proyectos).
+    const { data: eventsData, mutate: mutateEvents } = useSWR(
+        siteId ? `/alerts/events?limit=50&siteId=${siteId}` : null, fetcher,
+    );
+
+    // Solo las reglas de este proyecto.
+    const rules: Rule[] = (rulesData?.rules || []).filter(
+        (r: Rule) => !siteId || String(r.siteId) === siteId,
+    );
+    const events = eventsData?.events || [];
 
     const [open, setOpen] = useState(false);
     const [editing, setEditing] = useState<Rule | null>(null);
@@ -78,7 +94,7 @@ export function AlertsClient() {
         if (!open) return;
         setForm(editing ? {
             name: editing.name,
-            siteId: editing.siteId ? String(editing.siteId) : ALL_SITES,
+            siteId: editing.siteId ? String(editing.siteId) : siteId,
             metric: editing.metric,
             operator: editing.operator,
             threshold: String(editing.threshold),
@@ -86,8 +102,8 @@ export function AlertsClient() {
             severity: editing.severity,
             cooldownHours: String(editing.cooldownHours),
             notifyEmails: editing.notifyEmails,
-        } : EMPTY);
-    }, [open, editing]);
+        } : { ...EMPTY, siteId });
+    }, [open, editing, siteId]);
 
     const act = async (key: string, fn: () => Promise<unknown>, done?: string) => {
         setBusy(key);
@@ -103,7 +119,7 @@ export function AlertsClient() {
 
     const payload = () => ({
         name: form.name.trim(),
-        siteId: form.siteId === ALL_SITES ? null : Number(form.siteId),
+        siteId: form.siteId ? Number(form.siteId) : null,
         metric: form.metric,
         operator: form.operator,
         threshold: Number(form.threshold),
@@ -155,9 +171,11 @@ export function AlertsClient() {
         <div className="flex flex-col gap-6">
             <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
-                    <h1 className="text-xl font-semibold tracking-tight">Alertas</h1>
+                    <h1 className="text-xl font-semibold tracking-tight">
+                        Alertas{siteName && <span className="text-muted-foreground"> · {siteName}</span>}
+                    </h1>
                     <p className="text-sm text-muted-foreground">
-                        Tus propios umbrales. Se evalúan solas todos los días después del ETL.
+                        Tus propios umbrales para este proyecto. Se evalúan solas todos los días después del ETL.
                     </p>
                 </div>
                 <div className="flex gap-2">
@@ -201,8 +219,7 @@ export function AlertsClient() {
                 <CardHeader className="pb-3">
                     <CardTitle className="text-base">Reglas</CardTitle>
                     <CardDescription>
-                        Una regla sin sitio se aplica a todos los sitios activos.
-                        El cooldown evita que la misma alerta se repita todos los días.
+                        Umbrales de este proyecto. El cooldown evita que la misma alerta se repita todos los días.
                     </CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -211,7 +228,6 @@ export function AlertsClient() {
                             <TableRow>
                                 <TableHead>Regla</TableHead>
                                 <TableHead>Condición</TableHead>
-                                <TableHead>Sitio</TableHead>
                                 <TableHead>Severidad</TableHead>
                                 <TableHead>Notifica a</TableHead>
                                 <TableHead className="w-24"></TableHead>
@@ -220,8 +236,8 @@ export function AlertsClient() {
                         <TableBody>
                             {rules.length === 0 && (
                                 <TableRow>
-                                    <TableCell colSpan={6} className="py-10 text-center text-sm text-muted-foreground">
-                                        Todavía no hay reglas. Creá la primera con “Nueva regla”.
+                                    <TableCell colSpan={5} className="py-10 text-center text-sm text-muted-foreground">
+                                        Todavía no hay reglas para este proyecto. Creá la primera con “Nueva regla”.
                                     </TableCell>
                                 </TableRow>
                             )}
@@ -241,9 +257,6 @@ export function AlertsClient() {
                                             <span className="font-medium tabular-nums">
                                                 {r.threshold}{op?.needsPrevious ? '%' : ''}
                                             </span>
-                                        </TableCell>
-                                        <TableCell className="text-sm">
-                                            {r.siteName || <span className="text-muted-foreground">Todos</span>}
                                         </TableCell>
                                         <TableCell>{severityBadge(r.severity)}</TableCell>
                                         <TableCell className="max-w-[180px] truncate text-xs text-muted-foreground">
@@ -295,7 +308,6 @@ export function AlertsClient() {
                         <TableHeader>
                             <TableRow>
                                 <TableHead>Cuándo</TableHead>
-                                <TableHead>Sitio</TableHead>
                                 <TableHead>Qué pasó</TableHead>
                                 <TableHead>Severidad</TableHead>
                                 <TableHead className="text-right">Email</TableHead>
@@ -304,7 +316,7 @@ export function AlertsClient() {
                         <TableBody>
                             {events.length === 0 && (
                                 <TableRow>
-                                    <TableCell colSpan={5} className="py-10 text-center text-sm text-muted-foreground">
+                                    <TableCell colSpan={4} className="py-10 text-center text-sm text-muted-foreground">
                                         Sin disparos todavía. Si acabás de crear una regla, probá “Evaluar ahora”.
                                     </TableCell>
                                 </TableRow>
@@ -315,9 +327,6 @@ export function AlertsClient() {
                                         {new Date(e.createdAt).toLocaleString('es-AR', {
                                             day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit',
                                         })}
-                                    </TableCell>
-                                    <TableCell className="whitespace-nowrap text-sm font-medium">
-                                        {e.site?.name || '—'}
                                     </TableCell>
                                     <TableCell className="text-sm text-muted-foreground">{e.message}</TableCell>
                                     <TableCell>{severityBadge(e.severity)}</TableCell>
@@ -359,16 +368,10 @@ export function AlertsClient() {
                         </div>
 
                         <div className="flex flex-col gap-1.5">
-                            <Label>Sitio</Label>
-                            <Select value={form.siteId} onValueChange={(v) => setForm((f) => ({ ...f, siteId: v }))}>
-                                <SelectTrigger><SelectValue /></SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value={ALL_SITES}>Todos los sitios activos</SelectItem>
-                                    {sites.map((s: any) => (
-                                        <SelectItem key={s.id} value={String(s.id)}>{s.name}</SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
+                            <Label>Proyecto</Label>
+                            <div className="flex h-9 items-center rounded-md border bg-muted/40 px-3 text-sm text-muted-foreground">
+                                {siteName || '—'}
+                            </div>
                         </div>
 
                         <div className="grid gap-3 sm:grid-cols-3">

@@ -6,6 +6,7 @@ import { useSearchParams } from 'next/navigation';
 import { Download, Search, ArrowUpDown } from 'lucide-react';
 import { fetcher } from '@/lib/fetcher';
 import { parsePeriod } from '@/lib/periods';
+import { resolveCurrentSite } from '@/lib/current-site';
 import {
     formatDate, formatDuration, formatNumber, formatPct, formatPosition,
 } from '@/lib/format';
@@ -24,7 +25,6 @@ import {
 } from '@/components/ui/table';
 import { btn } from '@/lib/ui';
 
-const ALL = '__all__';
 
 
 type Field = { key: string; label: string; type: string };
@@ -93,17 +93,29 @@ export function ExplorerClient() {
     const [dataset, setDataset] = useState('traffic');
     const [dims, setDims] = useState<string[]>(['site']);
     const [mets, setMets] = useState<string[]>([]);
-    const [siteId, setSiteId] = useState(searchParams.get('site') || ALL);
+    const [siteId, setSiteId] = useState<string>('');
     const [search, setSearch] = useState('');
     const [sort, setSort] = useState<string | null>(null);
     const [desc, setDesc] = useState(true);
+
+    // El Explorer vive dentro del proyecto activo: URL (?site=) → guardado → primero.
+    useEffect(() => {
+        if (!siteId && sites.length) {
+            setSiteId(resolveCurrentSite(sites, searchParams.get('site')) || '');
+        }
+    }, [sites, siteId, searchParams]);
 
     const current = datasets.find((d) => d.key === dataset);
 
     // Al cambiar de dataset, reseteo la selección a algo válido para ese dataset.
     useEffect(() => {
         if (!current) return;
-        setDims(current.dimensions.some((d) => d.key === 'site') ? ['site'] : []);
+        // Ya estamos dentro de un solo sitio: la dimensión "sitio" sobra. Se arranca por
+        // la primera dimensión con contenido (consulta, página, canal…) o por totales.
+        const firstDim = current.dimensions.find(
+            (d) => d.key !== 'site' && d.key !== 'date',
+        );
+        setDims(firstDim ? [firstDim.key] : []);
         setMets(current.metrics.slice(0, 2).map((m) => m.key));
         setSort(null);
         setSearch('');
@@ -116,7 +128,7 @@ export function ExplorerClient() {
         const p = new URLSearchParams({ dataset, period, limit: '500' });
         if (dims.length) p.set('dimensions', dims.join(','));
         if (mets.length) p.set('metrics', mets.join(','));
-        if (siteId !== ALL) p.set('siteId', siteId);
+        if (siteId) p.set('siteId', siteId);
         if (search.trim()) p.set('search', search.trim());
         if (sort) p.set('sort', sort);
         p.set('desc', String(desc));
@@ -124,7 +136,7 @@ export function ExplorerClient() {
     }, [dataset, period, dims, mets, siteId, search, sort, desc]);
 
     const { data, isLoading, error, mutate } = useSWR(
-        mets.length ? `/metrics/explore?${qs}` : null,
+        siteId && mets.length ? `/metrics/explore?${qs}` : null,
         fetcher,
         { keepPreviousData: true }
     );
@@ -184,9 +196,8 @@ export function ExplorerClient() {
                         </Select>
 
                         <Select value={siteId} onValueChange={setSiteId}>
-                            <SelectTrigger className="w-52"><SelectValue /></SelectTrigger>
+                            <SelectTrigger className="w-52"><SelectValue placeholder="Proyecto…" /></SelectTrigger>
                             <SelectContent>
-                                <SelectItem value={ALL}>Todos los sitios</SelectItem>
                                 {sites.map((s: any) => (
                                     <SelectItem key={s.id} value={String(s.id)}>{s.name}</SelectItem>
                                 ))}

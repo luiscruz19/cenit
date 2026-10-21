@@ -1,12 +1,15 @@
 'use client';
 
 import Link from 'next/link';
+import { useEffect, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import useSWR from 'swr';
 import {
     Lightbulb, TrendingUp, MousePointerClick, ShieldAlert, ArrowUpRight, Target,
 } from 'lucide-react';
 import { fetcher } from '@/lib/fetcher';
 import { formatNumber } from '@/lib/format';
+import { resolveCurrentSite } from '@/lib/current-site';
 import { STRATEGIES, STRATEGIES_UPDATED_AT } from '@/lib/strategies';
 import { InfoTip } from '@/components/info-tip';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -28,25 +31,47 @@ const levelBadge = (level: string) =>
         : <Badge variant="warning">atención</Badge>;
 
 export function StrategiesClient() {
-    const { data: health, isLoading: loadingHealth } = useSWR('/insights/health', fetcher, { revalidateOnFocus: false });
-    const { data: seo, isLoading: loadingSeo } = useSWR('/insights/seo-opportunities', fetcher, { revalidateOnFocus: false });
+    const searchParams = useSearchParams();
+    const { data: sitesData } = useSWR('/sites', fetcher, { revalidateOnFocus: false });
+    const sites = (sitesData?.sites || []).filter((s: any) => s.is_active);
 
-    const alerts: HealthItem[] = (health?.items || []).filter((i: HealthItem) => i.level !== 'ok');
+    // La pantalla vive dentro del proyecto activo: URL (?site=) → guardado → primero.
+    const [siteId, setSiteId] = useState<string>('');
+    useEffect(() => {
+        if (!siteId && sites.length) {
+            setSiteId(resolveCurrentSite(sites, searchParams.get('site')) || '');
+        }
+    }, [sites, siteId, searchParams]);
+
+    const siteName = sites.find((s: any) => String(s.id) === siteId)?.name || null;
+
+    const { data: health, isLoading: loadingHealth } = useSWR('/insights/health', fetcher, { revalidateOnFocus: false });
+    const { data: seo, isLoading: loadingSeo } = useSWR(
+        siteId ? `/insights/seo-opportunities?siteId=${siteId}` : null,
+        fetcher, { revalidateOnFocus: false },
+    );
+
+    // Solo las alertas de este proyecto.
+    const alerts: HealthItem[] = (health?.items || [])
+        .filter((i: HealthItem) => i.level !== 'ok')
+        .filter((i: HealthItem) => !siteId || String(i.id) === siteId);
     const opportunities: (Opportunity & { type: 'page2' | 'lowCtr' })[] = [
         ...(seo?.page2 || []).map((o: Opportunity) => ({ ...o, type: 'page2' as const })),
         ...(seo?.lowCtr || []).map((o: Opportunity) => ({ ...o, type: 'lowCtr' as const })),
     ].sort((a, b) => b.estClicks - a.estClicks).slice(0, 6);
 
     const estGain = seo?.totals?.estClicksGain || 0;
-    const loading = loadingHealth || loadingSeo;
+    const loading = loadingHealth || loadingSeo || !siteId;
 
     return (
         <div className="flex flex-col gap-8">
             <div>
-                <h1 className="text-xl font-semibold tracking-tight">Estrategias</h1>
+                <h1 className="text-xl font-semibold tracking-tight">
+                    Estrategias{siteName && <span className="text-muted-foreground"> · {siteName}</span>}
+                </h1>
                 <p className="text-sm text-muted-foreground">
-                    Qué hacer para mejorar el posicionamiento y el rendimiento. Las prioridades se recalculan
-                    con cada corrida del ETL; el playbook se revisa periódicamente.
+                    Qué hacer para mejorar el posicionamiento y el rendimiento de este proyecto. Las prioridades
+                    se recalculan con cada corrida del ETL; el playbook se revisa periódicamente.
                 </p>
             </div>
 
@@ -72,11 +97,11 @@ export function StrategiesClient() {
                                     <ShieldAlert className="h-4 w-4 text-red-500" />
                                     Problemas a resolver
                                 </CardTitle>
-                                <CardDescription>Sitios con alertas de Salud, los más graves primero.</CardDescription>
+                                <CardDescription>Señales de Salud de este proyecto, las más graves primero.</CardDescription>
                             </CardHeader>
                             <CardContent className="flex flex-col gap-3">
                                 {alerts.length === 0 && (
-                                    <p className="text-sm text-muted-foreground">Sin alertas: todo el portfolio está OK.</p>
+                                    <p className="text-sm text-muted-foreground">Sin alertas: este proyecto está OK.</p>
                                 )}
                                 {alerts.slice(0, 6).map((s) => (
                                     <div key={s.id} className="flex flex-col gap-1 border-b pb-2 last:border-0 last:pb-0">
@@ -91,8 +116,8 @@ export function StrategiesClient() {
                                     </div>
                                 ))}
                                 {alerts.length > 6 && (
-                                    <Link href="/salud" className="text-xs font-medium text-muted-foreground hover:text-foreground">
-                                        Ver las {alerts.length} alertas en Salud →
+                                    <Link href={`/salud?site=${siteId}`} className="text-xs font-medium text-muted-foreground hover:text-foreground">
+                                        Ver todo el detalle en Salud →
                                     </Link>
                                 )}
                             </CardContent>
@@ -106,7 +131,7 @@ export function StrategiesClient() {
                                 </CardTitle>
                                 <CardDescription>
                                     {estGain > 0
-                                        ? <>Hasta <span className="font-medium text-foreground">{formatNumber(estGain)}</span> clicks/mes potenciales en total.</>
+                                        ? <>Hasta <span className="font-medium text-foreground">{formatNumber(estGain)}</span> clicks/mes potenciales en este proyecto.</>
                                         : 'Consultas con más potencial de clicks.'}
                                 </CardDescription>
                             </CardHeader>
@@ -131,7 +156,7 @@ export function StrategiesClient() {
                                         </p>
                                     </div>
                                 ))}
-                                <Link href="/oportunidades" className="text-xs font-medium text-muted-foreground hover:text-foreground">
+                                <Link href={`/oportunidades?site=${siteId}`} className="text-xs font-medium text-muted-foreground hover:text-foreground">
                                     Ver todas las oportunidades →
                                 </Link>
                             </CardContent>

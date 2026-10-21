@@ -1,11 +1,13 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import useSWR from 'swr';
 import {
     Loader2, Plus, Trash2, Pencil, LayoutDashboard, ArrowLeft, ArrowRight, Save, X,
 } from 'lucide-react';
 import { fetcher, postJson, putJson, deleteJson } from '@/lib/fetcher';
+import { resolveCurrentSite } from '@/lib/current-site';
 import { cn } from '@/utils/shadcn';
 import { DashboardWidget, type Widget } from '@/components/dashboard-widget';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -24,7 +26,6 @@ import {
     AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 
-const ALL = '__all__';
 const INHERIT = '__inherit__';
 
 
@@ -38,19 +39,20 @@ const WIDGET_TYPES = [
     { key: 'table', label: 'Tabla', hint: 'Top N por dimensión' },
 ] as const;
 
-const newWidget = (): Widget => ({
+const newWidget = (siteId: number | null = null): Widget => ({
     id: `w${Date.now()}${Math.floor(Math.random() * 1000)}`,
     title: '',
     type: 'kpi',
     dataset: 'traffic',
     metrics: ['sessions'],
     dimension: null,
-    siteId: null,
+    siteId,
     period: null,
     width: 1,
 });
 
 export function DashboardsClient() {
+    const searchParams = useSearchParams();
     const { data: schemaData } = useSWR('/metrics/explore/schema', fetcher, { revalidateOnFocus: false });
     const { data: dashData, mutate } = useSWR('/dashboards', fetcher);
     const { data: sitesData } = useSWR('/sites', fetcher);
@@ -58,6 +60,9 @@ export function DashboardsClient() {
     const datasets: Dataset[] = schemaData?.datasets || [];
     const dashboards: Dash[] = dashData?.dashboards || [];
     const sites = (sitesData?.sites || []).filter((s: any) => s.is_active);
+
+    // Proyecto activo: cada widget nuevo arranca apuntando a este sitio (URL → guardado → primero).
+    const currentSiteId = Number(resolveCurrentSite(sites, searchParams.get('site')) || 0) || null;
 
     const [selectedId, setSelectedId] = useState<number | null>(null);
     const [editing, setEditing] = useState(false);
@@ -257,7 +262,7 @@ export function DashboardsClient() {
                                 </SelectContent>
                             </Select>
                         </div>
-                        <button className={btn} onClick={() => setWidgetDialog(newWidget())}>
+                        <button className={btn} onClick={() => setWidgetDialog(newWidget(currentSiteId))}>
                             <Plus className="h-4 w-4" />
                             Agregar widget
                         </button>
@@ -334,6 +339,7 @@ export function DashboardsClient() {
                     widget={widgetDialog}
                     datasets={datasets}
                     sites={sites}
+                    currentSiteId={currentSiteId}
                     onClose={() => setWidgetDialog(null)}
                     onSave={upsertWidget}
                 />
@@ -364,11 +370,12 @@ export function DashboardsClient() {
 
 /** Configuración de un widget. Las opciones se derivan del catálogo del Explorer. */
 function WidgetDialog({
-    widget, datasets, sites, onClose, onSave,
+    widget, datasets, sites, currentSiteId, onClose, onSave,
 }: {
     widget: Widget;
     datasets: Dataset[];
     sites: any[];
+    currentSiteId: number | null;
     onClose: () => void;
     onSave: (w: Widget) => void;
 }) {
@@ -542,12 +549,11 @@ function WidgetDialog({
                         <div className="flex flex-col gap-1.5">
                             <Label>Sitio</Label>
                             <Select
-                                value={w.siteId ? String(w.siteId) : ALL}
-                                onValueChange={(v) => setW({ ...w, siteId: v === ALL ? null : Number(v) })}
+                                value={w.siteId ? String(w.siteId) : (currentSiteId ? String(currentSiteId) : '')}
+                                onValueChange={(v) => setW({ ...w, siteId: Number(v) })}
                             >
-                                <SelectTrigger><SelectValue /></SelectTrigger>
+                                <SelectTrigger><SelectValue placeholder="Proyecto…" /></SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value={ALL}>Todos los sitios</SelectItem>
                                     {sites.map((s: any) => (
                                         <SelectItem key={s.id} value={String(s.id)}>{s.name}</SelectItem>
                                     ))}
