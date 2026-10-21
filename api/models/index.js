@@ -23,6 +23,7 @@ import Report from './Report.js';
 import ReportSend from './ReportSend.js';
 import Dashboard from './Dashboard.js';
 import ClarityDailyMetric from './ClarityDailyMetric.js';
+import SiteToken from './SiteToken.js';
 
 /**
  * Asociaciones.
@@ -68,6 +69,9 @@ AlertRule.hasMany(AlertEvent, { foreignKey: 'rule_id', as: 'events', constraints
 AlertEvent.belongsTo(AlertRule, { foreignKey: 'rule_id', as: 'rule', constraints: false });
 
 // Reportes. site_id puede ser NULL (= reporte del portfolio completo).
+Site.hasMany(SiteToken, { foreignKey: 'site_id', as: 'tokens', constraints: false });
+SiteToken.belongsTo(Site, { foreignKey: 'site_id', as: 'site', constraints: false });
+
 Report.hasMany(ReportSend, { foreignKey: 'report_id', as: 'sends', constraints: false });
 ReportSend.belongsTo(Report, { foreignKey: 'report_id', as: 'report', constraints: false });
 
@@ -96,6 +100,7 @@ export {
     GscDailyCountry,
     GscDailyDevice,
     GaDailyHour,
+    SiteToken,
 };
 
 export default {
@@ -123,4 +128,5 @@ export default {
     GscDailyCountry,
     GscDailyDevice,
     GaDailyHour,
+    SiteToken,
 };

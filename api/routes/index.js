@@ -7,6 +7,7 @@ import insights from './insights/index.js';
 import alerts from './alerts/index.js';
 import reports from './reports/index.js';
 import dashboards from './dashboards/index.js';
+import siteSummary from './site-summary/index.js';
 
 const api = Router();
 
@@ -20,5 +21,7 @@ api.use('/insights', insights);
 api.use('/alerts', alerts);
 api.use('/reports', reports);
 api.use('/dashboards', dashboards);
+// De servidor a servidor, con el token del sitio (no con la sesión de Google).
+api.use('/site-summary', siteSummary);
 
 export default api;

@@ -10,6 +10,10 @@ export function middleware(req: NextRequest) {
     const hasSession = Boolean(req.cookies.get(TOKEN_COOKIE)?.value);
     const { pathname } = req.nextUrl;
 
+    // De servidor a servidor, con el token del sitio: no pasa por el login.
+    if (pathname === '/site-summary') {
+        return NextResponse.next();
+    }
     if (!hasSession && pathname !== '/login') {
         return NextResponse.redirect(new URL('/login', req.url));
     }
