@@ -1,39 +1,27 @@
+import fs from 'node:fs';
 import sequelize from './sequelize.js';
 import '../models/index.js';
 import Site from '../models/Site.js';
 
 /**
  * Seed idempotente: asegura los sitios del portfolio (nombre + dominio canónico).
+ * La lista vive en db/sites.local.json, que no se versiona: son datos de clientes y el repo es público.
  * El mapeo a GA4/GSC se completa después desde la pantalla de settings (discovery).
  * Uso (dentro del contenedor): node db/seed.js   ·   o `make seed`.
  */
 
-const SITES = [
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-];
+const SITES_FILE = new URL('./sites.local.json', import.meta.url);
+
+const loadSites = () => {
+    if (!fs.existsSync(SITES_FILE)) {
+        throw new Error('Falta db/sites.local.json: copiá db/sites.example.json y completalo.');
+    }
+    return JSON.parse(fs.readFileSync(SITES_FILE, 'utf8'));
+};
 
 (async () => {
     try {
+        const SITES = loadSites();
         await sequelize.authenticate();
         await sequelize.sync();
 

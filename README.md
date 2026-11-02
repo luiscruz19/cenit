@@ -48,7 +48,7 @@ Requiere `/opt/shared` levantado (red `net-shared` + `mysql_db` + `traefik`).
 
 ```bash
 make up      # crea api/.env (genera SECRET_KEY y TOKEN_ENCRYPTION_KEY), asegura la DB y levanta
-make seed    # asegura los 21 sitios del portfolio
+make seed    # asegura los sitios de api/db/sites.local.json (copiar de sites.example.json; no se versiona)
 ```
 
 - Dashboard: http://localhost:4100 (o http://cenit.localhost)

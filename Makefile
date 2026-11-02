@@ -7,7 +7,7 @@ help:
 	@echo "Cenit — dashboard GA4 + Search Console multi-sitio. Usa la infra compartida de /opt/shared."
 	@echo ""
 	@echo "  make up      .env + DB + levanta api/web en net-shared"
-	@echo "  make seed    Crea/asegura los sitios del portfolio (21 proyectos)"
+	@echo "  make seed    Crea/asegura los sitios de api/db/sites.local.json"
 	@echo "  make dbs     Crea/asegura la base CENIT"
 	@echo "  make down    Baja los contenedores (no toca la infra compartida)"
 	@echo "  make logs|ps Logs / estado"

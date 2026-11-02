@@ -4,5 +4,8 @@ node_modules/
 .env.local
 .env.deploy.test
 .env.deploy.prod
+# Datos de clientes: el repo es público.
+api/db/sites.local.json
+docs/INFORME-*
 *.log
 .DS_Store
